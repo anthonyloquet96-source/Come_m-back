@@ -8,6 +8,7 @@
 <meta name="apple-mobile-web-app-title" content="Marche Arrière">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#000000">
+<link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
 html{color-scheme:dark;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -99,6 +100,14 @@ h2{font:700 19px/1.2 var(--f-display);margin:0 0 6px;display:flex;align-items:ce
 .wrap .check input{width:22px;height:22px;accent-color:var(--brass);flex:none}
 
 :focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+
+.diag{border-top:1px solid var(--line);padding-top:16px}
+.diag summary{cursor:pointer;font:700 19px/1.2 var(--f-display);list-style:none;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.diag summary::-webkit-details-marker{display:none}
+.diag summary::after{content:"+";font:400 22px var(--f-mono);color:var(--brass)}
+.diag[open] summary::after{content:"−"}
+.adv{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+#diagText{font:400 12px/1.6 var(--f-mono)}
 
 .launch{position:sticky;bottom:0;background:var(--felt);padding:14px 0 14px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:10px;margin-top:-4px}
 .launch p{margin:0;font:400 12px/1.5 var(--f-mono);color:var(--mute)}
@@ -212,6 +221,16 @@ html.tour,html.tour body{background:#000!important;overflow:hidden;overscroll-be
     <label class="check"><input id="autostart" type="checkbox">Ouvrir directement en mode tour</label>
   </section>
 
+  <details class="diag">
+    <summary>Affichage</summary>
+    <div class="adv">
+      <p class="help" id="diagText"></p>
+      <div class="row"><label for="extra">Étendre le fond vers le bas</label><output id="extraVal"></output><input id="extra" type="range" min="0" max="150" step="1"></div>
+      <p class="help">À utiliser si une bande apparaît en bas de l'écran pendant le tour. Augmente jusqu'à ce qu'elle disparaisse.</p>
+    </div>
+  </details>
+  <div id="probe" aria-hidden="true" style="position:absolute;left:-9999px;top:0;width:1px;height:1px;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)"></div>
+
   <p class="note" id="buildNote"></p>
 
   <div class="launch">
@@ -269,7 +288,7 @@ html.tour,html.tour body{background:#000!important;overflow:hidden;overscroll-be
 (function(){
   var $ = function(s){ return document.querySelector(s); };
   var FONT = '-apple-system,"SF Pro Display","Helvetica Neue",Roboto,"Segoe UI",system-ui,sans-serif';
-  var DEF = {minutes:10, mode:'auto', duration:5, delay:0, autostart:true, bgMode:'mask', rawS:1, rawX:0, rawY:0, x:50, y:22.5, size:28, color:'#ffffff', showDate:true, fill:'mirror'};
+  var DEF = {minutes:10, mode:'auto', duration:5, delay:0, autostart:true, bgMode:'mask', rawS:1, rawX:0, rawY:0, extra:0, x:50, y:22.5, size:28, color:'#ffffff', showDate:true, fill:'mirror'};
   var DEF_ZONES = [{x:0, y:12, w:100, h:17}];
   var KEY = 'marche-arriere-v4';
   var S = Object.assign({}, DEF, {zones: DEF_ZONES.map(function(z){ return Object.assign({}, z); })});
@@ -505,6 +524,14 @@ html.tour,html.tour body{background:#000!important;overflow:hidden;overscroll-be
     $('#duration').value = S.duration; $('#durVal').textContent = S.duration + ' s';
     $('#delay').value = S.delay; $('#delayVal').textContent = S.delay > 0 ? S.delay + ' s' : 'Aucun';
     $('#autostart').checked = !!S.autostart;
+    $('#extra').value = S.extra || 0; $('#extraVal').textContent = (S.extra || 0) + ' px';
+    try {
+      var cs = getComputedStyle($('#probe')), vv = window.visualViewport;
+      var sa = (parseFloat(cs.paddingTop) || 0) + ' / ' + (parseFloat(cs.paddingBottom) || 0);
+      var sa2 = window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+      $('#diagText').textContent = 'Fenêtre ' + window.innerWidth + ' × ' + window.innerHeight + (vv ? ' · visuel ' + Math.round(vv.width) + ' × ' + Math.round(vv.height) : '') +
+        ' · écran ' + screen.width + ' × ' + screen.height + ' · mode application : ' + (sa2 ? 'oui' : 'non') + ' · zones sûres haut/bas ' + sa;
+    } catch(e){}
     updatePreview();
   }
   function setMinutes(v){
@@ -525,6 +552,7 @@ html.tour,html.tour body{background:#000!important;overflow:hidden;overscroll-be
     r.addEventListener('change', function(){ if (r.checked){ S.mode = r.value; save(); refreshUI(); } });
   });
   $('#duration').addEventListener('input', function(e){ S.duration = parseFloat(e.target.value); save(); refreshUI(); });
+  $('#extra').addEventListener('input', function(e){ S.extra = parseFloat(e.target.value); save(); refreshUI(); });
   $('#delay').addEventListener('input', function(e){ S.delay = parseFloat(e.target.value); save(); refreshUI(); });
   $('#autostart').addEventListener('change', function(e){ S.autostart = e.target.checked; save(); });
   $('#resetClock').addEventListener('click', function(){
@@ -585,7 +613,7 @@ html.tour,html.tour body{background:#000!important;overflow:hidden;overscroll-be
     try { if (window.visualViewport) h = Math.max(h, window.visualViewport.height); } catch(e){}
     var standalone = window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
     if (standalone && window.screen && w <= h) h = Math.max(h, Math.max(screen.width, screen.height));
-    return {w: w, h: h};
+    return {w: w, h: h + (S.extra || 0)};
   }
   function layoutFull(el){ var s = fullSize(); el.style.width = s.w + 'px'; el.style.height = s.h + 'px'; return s; }
   function fitEd(){ var s = layoutFull(editor); edR.fit(s.w, s.h); drawEd(); }
@@ -815,7 +843,7 @@ html.tour,html.tour body{background:#000!important;overflow:hidden;overscroll-be
   }, 250);
 
   /* version et mode hors ligne */
-  var VERSION = '8', offlineReady = false;
+  var VERSION = '9', offlineReady = false;
   function buildNote(){ $('#buildNote').textContent = 'Version ' + VERSION + (offlineReady ? ' · prête hors ligne' : ''); }
   buildNote();
   try {
