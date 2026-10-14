@@ -786,7 +786,11 @@ html.tour,html.tour body{background:#000!important;overflow:hidden;overscroll-be
     document.documentElement.classList.add('tour');
     setup.hidden = true; stage.hidden = false; window.scrollTo(0, 0);
     fitStage(); lock();
-    try { var f = document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); if (f && f.catch) f.catch(function(){}); } catch(e){}
+    try {
+      if (!navigator.userActivation || navigator.userActivation.isActive){
+        var f = document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); if (f && f.catch) f.catch(function(){});
+      }
+    } catch(e){}
   }
   function leave(){
     running = false; busy = false; clearTimeout(timer); timer = null;
@@ -795,11 +799,13 @@ html.tour,html.tour body{background:#000!important;overflow:hidden;overscroll-be
     document.documentElement.classList.remove('tour');
     stage.hidden = true; setup.hidden = false; refreshUI();
   }
-  function hold(el, fn){
+  /* coins cachés : appui long = action, simple toucher = recul comme ailleurs sur l'écran */
+  function hold(el, fn, tap){
     var t = null;
     function clear(){ clearTimeout(t); t = null; }
-    el.addEventListener('pointerdown', function(e){ e.preventDefault(); clear(); t = setTimeout(function(){ clear(); fn(); }, 1100); });
-    ['pointerup','pointercancel','pointerleave'].forEach(function(n){ el.addEventListener(n, clear); });
+    el.addEventListener('pointerdown', function(e){ e.preventDefault(); clear(); t = setTimeout(function(){ t = null; fn(); }, 1100); });
+    el.addEventListener('pointerup', function(){ if (t){ clear(); if (tap) tap(); } });
+    ['pointercancel','pointerleave'].forEach(function(n){ el.addEventListener(n, clear); });
   }
 
   $('#go').addEventListener('click', enter);
@@ -810,6 +816,7 @@ html.tour,html.tour body{background:#000!important;overflow:hidden;overscroll-be
     function meanY(){ var s = 0, n = 0, k; for (k in ptrs){ s += ptrs[k]; n++; } return n ? s / n : 0; }
     sc.addEventListener('pointerdown', function(e){
       e.preventDefault();
+      if (!wl) lock();
       ptrs[e.pointerId] = e.clientY; count++;
       if (count >= 2){ multi = true; startY = meanY(); clearTimeout(pend); pend = null; return; }
       pend = setTimeout(function(){ pend = null; if (!multi) rewind(); }, 120);
@@ -827,7 +834,7 @@ html.tour,html.tour body{background:#000!important;overflow:hidden;overscroll-be
     }
     sc.addEventListener('pointerup', up); sc.addEventListener('pointercancel', up);
   })();
-  hold($('#zl'), leave); hold($('#zr'), rearm);
+  hold($('#zl'), leave, rewind); hold($('#zr'), rearm, rewind);
   stage.addEventListener('contextmenu', function(e){ e.preventDefault(); });
   document.addEventListener('keydown', function(e){
     if (e.key !== 'Escape') return;
@@ -843,7 +850,7 @@ html.tour,html.tour body{background:#000!important;overflow:hidden;overscroll-be
   }, 250);
 
   /* version et mode hors ligne */
-  var VERSION = '9', offlineReady = false;
+  var VERSION = '10', offlineReady = false;
   function buildNote(){ $('#buildNote').textContent = 'Version ' + VERSION + (offlineReady ? ' · prête hors ligne' : ''); }
   buildNote();
   try {
