@@ -114,6 +114,9 @@ h2{font:700 19px/1.2 var(--f-display);margin:0 0 6px;display:flex;align-items:ce
 
 /* scène */
 html.tour,html.tour body{background:#000!important;overflow:hidden;overscroll-behavior:none}
+html.tour body{padding:0}
+html.tour.tour-abs,html.tour.tour-abs body{overflow:visible}
+html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
 #stage{position:fixed;left:0;top:0;width:100%;height:100%;height:100lvh;background:#000;z-index:10;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;cursor:none}
 #stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .zone{position:absolute;top:0;width:28vw;height:14vh;background:transparent}
@@ -227,9 +230,15 @@ html.tour,html.tour body{background:#000!important;overflow:hidden;overscroll-be
       <p class="help" id="diagText"></p>
       <div class="row"><label for="extra">Étendre le fond vers le bas</label><output id="extraVal"></output><input id="extra" type="range" min="0" max="150" step="1"></div>
       <p class="help">À utiliser si une bande apparaît en bas de l'écran pendant le tour. Augmente jusqu'à ce qu'elle disparaisse.</p>
+      <div class="row"><label for="layout">Mode d'affichage du tour</label><output></output>
+        <select id="layout" style="grid-column:1/-1;background:var(--felt-2);color:var(--chalk);border:1px solid var(--line);border-radius:6px;font:400 15px var(--f-body);padding:10px;min-height:44px">
+          <option value="1">Standard</option>
+          <option value="2">Page entière</option>
+        </select></div>
+      <label class="check"><input id="debug" type="checkbox">Afficher les repères en mode tour</label>
+      <p class="help">Les repères tracent un cadre rouge et des lignes de couleur avec les tailles mesurées. Utile pour me les envoyer en capture.</p>
     </div>
   </details>
-  <div id="probe" aria-hidden="true" style="position:absolute;left:-9999px;top:0;width:1px;height:1px;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)"></div>
 
   <p class="note" id="buildNote"></p>
 
@@ -283,12 +292,13 @@ html.tour,html.tour body{background:#000!important;overflow:hidden;overscroll-be
   <div class="zone l" id="zl"></div>
   <div class="zone r" id="zr"></div>
 </div>
+<div id="probe" aria-hidden="true" style="position:absolute;left:-9999px;top:0;width:1px;height:1px;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)"></div>
 
 <script>
 (function(){
   var $ = function(s){ return document.querySelector(s); };
   var FONT = '-apple-system,"SF Pro Display","Helvetica Neue",Roboto,"Segoe UI",system-ui,sans-serif';
-  var DEF = {minutes:10, mode:'auto', duration:5, delay:0, autostart:true, bgMode:'mask', rawS:1, rawX:0, rawY:0, extra:0, x:50, y:22.5, size:28, color:'#ffffff', showDate:true, fill:'mirror'};
+  var DEF = {minutes:10, mode:'auto', duration:5, delay:0, autostart:true, bgMode:'mask', rawS:1, rawX:0, rawY:0, extra:0, layout:'1', debug:false, x:50, y:22.5, size:28, color:'#ffffff', showDate:true, fill:'mirror'};
   var DEF_ZONES = [{x:0, y:12, w:100, h:17}];
   var KEY = 'marche-arriere-v4';
   var S = Object.assign({}, DEF, {zones: DEF_ZONES.map(function(z){ return Object.assign({}, z); })});
@@ -482,6 +492,22 @@ html.tour,html.tour body{background:#000!important;overflow:hidden;overscroll-be
         S.zones.forEach(function(z){ box(z, cw, ch, false); });
         if (o.draft) box(o.draft, cw, ch, true);
       }
+      if (o.debug){
+        var sc = cw / o.debug.w, lw = Math.max(2, 3 * sc), lh = 16 * sc;
+        ctx.save(); ctx.lineWidth = lw; ctx.strokeStyle = '#ff2d2d';
+        ctx.strokeRect(lw / 2, lw / 2, cw - lw, ch - lw);
+        ctx.lineWidth = Math.max(1, 1.5 * sc); ctx.font = '600 ' + (11 * sc) + 'px monospace'; ctx.textAlign = 'left';
+        o.debug.marks.forEach(function(m){
+          if (!m.y) return;
+          var y = m.y * sc; ctx.strokeStyle = m.c; ctx.fillStyle = m.c;
+          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(cw, y); ctx.stroke();
+          ctx.fillText(m.t, 8 * sc, y - 4 * sc);
+        });
+        ctx.fillStyle = 'rgba(0,0,0,.78)'; ctx.fillRect(0, ch * 0.45, cw, lh * (o.debug.lines.length + 1));
+        ctx.fillStyle = '#ffe066'; ctx.font = '500 ' + (12 * sc) + 'px monospace';
+        o.debug.lines.forEach(function(t, i){ ctx.fillText(t, 8 * sc, ch * 0.45 + lh * (i + 1)); });
+        ctx.restore();
+      }
     }
     return {fit: fit, render: render};
   }
@@ -525,6 +551,7 @@ html.tour,html.tour body{background:#000!important;overflow:hidden;overscroll-be
     $('#delay').value = S.delay; $('#delayVal').textContent = S.delay > 0 ? S.delay + ' s' : 'Aucun';
     $('#autostart').checked = !!S.autostart;
     $('#extra').value = S.extra || 0; $('#extraVal').textContent = (S.extra || 0) + ' px';
+    $('#layout').value = S.layout; $('#debug').checked = !!S.debug;
     try {
       var cs = getComputedStyle($('#probe')), vv = window.visualViewport;
       var sa = (parseFloat(cs.paddingTop) || 0) + ' / ' + (parseFloat(cs.paddingBottom) || 0);
@@ -552,6 +579,8 @@ html.tour,html.tour body{background:#000!important;overflow:hidden;overscroll-be
     r.addEventListener('change', function(){ if (r.checked){ S.mode = r.value; save(); refreshUI(); } });
   });
   $('#duration').addEventListener('input', function(e){ S.duration = parseFloat(e.target.value); save(); refreshUI(); });
+  $('#layout').addEventListener('change', function(e){ S.layout = e.target.value; save(); });
+  $('#debug').addEventListener('change', function(e){ S.debug = e.target.checked; save(); });
   $('#extra').addEventListener('input', function(e){ S.extra = parseFloat(e.target.value); save(); refreshUI(); });
   $('#delay').addEventListener('input', function(e){ S.delay = parseFloat(e.target.value); save(); refreshUI(); });
   $('#autostart').addEventListener('change', function(e){ S.autostart = e.target.checked; save(); });
@@ -615,7 +644,34 @@ html.tour,html.tour body{background:#000!important;overflow:hidden;overscroll-be
     if (standalone && window.screen && w <= h) h = Math.max(h, Math.max(screen.width, screen.height));
     return {w: w, h: h + (S.extra || 0)};
   }
-  function layoutFull(el){ var s = fullSize(); el.style.width = s.w + 'px'; el.style.height = s.h + 'px'; return s; }
+  function layoutFull(el){
+    var s = fullSize();
+    el.style.width = s.w + 'px'; el.style.height = s.h + 'px';
+    document.body.style.minHeight = S.layout === '2' ? s.h + 'px' : '';
+    return s;
+  }
+  function setTourClass(on){
+    var c = document.documentElement.classList;
+    c.toggle('tour', on); c.toggle('tour-abs', on && S.layout === '2');
+    if (!on) document.body.style.minHeight = '';
+  }
+  function debugInfo(){
+    var r = stage.getBoundingClientRect(), vv = window.visualViewport, cs = getComputedStyle($('#probe'));
+    var ih = window.innerHeight;
+    return {w: r.width || window.innerWidth, lines: [
+      'fenetre ' + window.innerWidth + 'x' + ih,
+      'visuel ' + (vv ? Math.round(vv.width) + 'x' + Math.round(vv.height) : '-'),
+      'ecran ' + screen.width + 'x' + screen.height,
+      'scene ' + Math.round(r.width) + 'x' + Math.round(r.height) + ' haut ' + Math.round(r.top),
+      'app ' + (window.navigator.standalone === true ? 'oui' : 'non') + ' · mode ' + S.layout + ' · +' + (S.extra || 0),
+      'zones sures ' + cs.paddingTop + ' / ' + cs.paddingBottom
+    ], marks: [
+      {y: ih, c: '#00ff66', t: 'fenetre'},
+      {y: vv ? vv.height : 0, c: '#00e5ff', t: 'visuel'},
+      {y: screen.height, c: '#6f8cff', t: 'ecran'},
+      {y: r.bottom, c: '#ff00ff', t: 'scene'}
+    ]};
+  }
   function fitEd(){ var s = layoutFull(editor); edR.fit(s.w, s.h); drawEd(); }
   function syncEd(){
     var erase = ed.tool === 'erase', bgt = ed.tool === 'bg', raw = useRaw();
@@ -639,12 +695,12 @@ html.tour,html.tour body{background:#000!important;overflow:hidden;overscroll-be
   function openEditor(){
     if (!img) return;
     ed.open = true; ed.tool = 'clock'; ed.orig = false; ed.draft = null;
-    document.documentElement.classList.add('tour');
+    setTourClass(true);
     setup.hidden = true; editor.hidden = false; window.scrollTo(0, 0);
     syncEd(); fitEd();
   }
   function closeEditor(){
-    document.documentElement.classList.remove('tour');
+    setTourClass(false);
     ed.open = false; ed.draft = null; editor.hidden = true; setup.hidden = false; save(); refreshUI();
   }
   $('#openEditor').addEventListener('click', openEditor);
@@ -748,7 +804,7 @@ html.tour,html.tour body{background:#000!important;overflow:hidden;overscroll-be
   var running = false, busy = false, timer = null, offset = 0, wl = null;
 
   function shown(){ return new Date(Date.now() + offset * 60000); }
-  function frame(){ if (running) stR.render(shown()); }
+  function frame(){ if (running) stR.render(shown(), S.debug ? {debug: debugInfo()} : null); }
   function fitStage(){ var s = layoutFull(stage); stR.fit(s.w, s.h); frame(); }
   function refit(){ if (running) fitStage(); else if (ed.open) fitEd(); }
   window.addEventListener('orientationchange', function(){ setTimeout(refit, 250); });
@@ -783,7 +839,7 @@ html.tour,html.tour body{background:#000!important;overflow:hidden;overscroll-be
   function enter(){
     if (!img) return;
     save(); running = true; busy = false; offset = S.minutes;
-    document.documentElement.classList.add('tour');
+    setTourClass(true);
     setup.hidden = true; stage.hidden = false; window.scrollTo(0, 0);
     fitStage(); lock();
     try {
@@ -796,7 +852,7 @@ html.tour,html.tour body{background:#000!important;overflow:hidden;overscroll-be
     running = false; busy = false; clearTimeout(timer); timer = null;
     try { if (wl) wl.release(); } catch(e){} wl = null;
     try { if (document.fullscreenElement) document.exitFullscreen(); } catch(e){}
-    document.documentElement.classList.remove('tour');
+    setTourClass(false);
     stage.hidden = true; setup.hidden = false; refreshUI();
   }
   /* coins cachés : appui long = action, simple toucher = recul comme ailleurs sur l'écran */
@@ -850,7 +906,7 @@ html.tour,html.tour body{background:#000!important;overflow:hidden;overscroll-be
   }, 250);
 
   /* version et mode hors ligne */
-  var VERSION = '10', offlineReady = false;
+  var VERSION = '11', offlineReady = false;
   function buildNote(){ $('#buildNote').textContent = 'Version ' + VERSION + (offlineReady ? ' · prête hors ligne' : ''); }
   buildNote();
   try {
