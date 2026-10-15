@@ -178,7 +178,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     <p class="lede">Au toucher : le temps recule jusqu'à l'heure réelle, une notification SMS apparaît, ou une carte surgit en fond d'écran.</p>
   </header>
 
-  <p class="note" id="motionAsk" hidden style="border:1px solid var(--brass);border-radius:8px;padding:10px 12px;color:var(--chalk);text-align:left">Capteurs de mouvement : iOS redemande l'autorisation à chaque ouverture de l'app. Appuie sur « Lancer le tour » et choisis « Autoriser » avant ton numéro. Pour ne plus voir cette demande, décoche « La carte bouge… » dans « Carte en fond d'écran ».</p>
+  <p class="note" id="motionAsk" hidden style="border:1px solid var(--brass);border-radius:8px;padding:10px 12px;color:var(--chalk);text-align:left">Mouvement de la carte : iOS redemande l'autorisation à chaque ouverture de l'app. L'ouverture directe en tour ne peut pas la demander sans interrompre ton numéro : avant de commencer, appuie sur « Lancer le tour » ici et choisis « Autoriser ».</p>
 
   <section class="preview" aria-label="Aperçu">
     <div class="phone" id="phone"><canvas id="pv"></canvas></div>
@@ -1406,9 +1406,9 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     mo.on = false; window.removeEventListener('devicemotion', onDM); window.removeEventListener('deviceorientation', onDO);
     cancelAnimationFrame(mo.raf); mo.raf = 0; mo.ref = null; mo.tx = mo.ty = 0;
   }
-  function startMotion(){
+  function startMotion(fromClick){
     if (!(S.effect === 'card' && S.cardMotion) || mo.on) return;
-    if (mo.perm) enableMotion(); else if (!mo.asked) askMotion(function(ok){ if (ok && running) enableMotion(); });
+    if (mo.perm) enableMotion(); else if (fromClick && !mo.asked) askMotion(function(ok){ if (ok && running) enableMotion(); });
   }
   function shown(){ return new Date(Date.now() + offset * 60000); }
   function frame(){
@@ -1424,16 +1424,15 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   function sigNow(){ return window.innerWidth + 'x' + window.innerHeight + '/' + curAngle(); }
   function onRot(){
     if (!running){ setTimeout(refit, 250); return; }
-    if (S.lockPortrait) stage.style.visibility = 'hidden';
     fitStage();
     clearTimeout(rotT);
-    rotT = setTimeout(function(){ fitStage(); stage.style.visibility = ''; }, 380);
+    [40, 120, 260, 500].forEach(function(d){ setTimeout(function(){ if (running) fitStage(); }, d); });
   }
   window.addEventListener('orientationchange', onRot);
   try { if (screen.orientation && screen.orientation.addEventListener) screen.orientation.addEventListener('change', onRot); } catch(e){}
   try { var mq = window.matchMedia('(orientation: landscape)'); if (mq.addEventListener) mq.addEventListener('change', onRot); } catch(e){}
   setInterval(function(){ if (!running) return; var g = sigNow(); if (g !== lastSig){ var first = lastSig === ''; lastSig = g; if (!first) onRot(); } }, 120);
-  if (window.visualViewport) window.visualViewport.addEventListener('resize', function(){ if (running && S.lockPortrait && stage.style.visibility === 'hidden') return; refit(); });
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', refit);
 
   function startOff(){ return S.effect === 'time' ? S.minutes : 0; }
   var notif = $('#notif'), smsOn = false, actx = null;
@@ -1499,12 +1498,12 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   function rearm(){ resetCard(); cancelAnimationFrame(rafId); rafId = 0; rollQ = 1; clearTimeout(timer); timer = null; busy = false; hideSms(); offset = startOff(); frame(); }
 
   function lock(){ try { var p = navigator.wakeLock && navigator.wakeLock.request('screen'); if (p) p.then(function(l){ wl = l; }).catch(function(){}); } catch(e){} }
-  function enter(){
+  function enter(ev){
     if (!img) return;
     save(); running = true; busy = false; hideSms(); resetCard(); offset = startOff();
     setTourClass(true);
     setup.hidden = true; stage.hidden = false; window.scrollTo(0, 0);
-    fitStage(); lock(); startMotion();
+    fitStage(); lock(); startMotion(!!(ev && ev.isTrusted));
     try { if (screen.orientation && screen.orientation.lock) screen.orientation.lock('portrait').catch(function(){}); } catch(e){}
     try {
       if (!navigator.userActivation || navigator.userActivation.isActive){
@@ -1539,7 +1538,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     sc.addEventListener('pointerdown', function(e){
       e.preventDefault();
       if (!wl) lock();
-      if (!mo.on && !mo.asked) startMotion();
+      if (!mo.on) startMotion(false);
       ptrs[e.pointerId] = cy(e); count++;
       if (count >= 2){ multi = true; startY = meanY(); clearTimeout(pend); pend = null; return; }
       pend = setTimeout(function(){ pend = null; if (!multi) rewind(); }, 120);
@@ -1573,7 +1572,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   }, 250);
 
   /* version et mode hors ligne */
-  var VERSION = '25', offlineReady = false;
+  var VERSION = '26', offlineReady = false;
   function buildNote(){ $('#buildNote').textContent = 'Version ' + VERSION + (offlineReady ? ' · prête hors ligne' : ''); }
   buildNote();
   try {
@@ -1592,7 +1591,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     .then(function(u){ if (u) return loadImg(u).then(function(i){ rawImg = i; rawVer++; }); })
     .catch(function(){})
     .then(function(){
-      if (img && S.autostart && !needMotionPrompt()) enter(); else { setup.hidden = false; refreshUI(); }
+      if (img && S.autostart) enter(); else { setup.hidden = false; refreshUI(); }
       refreshUI();
     });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(updatePreview);
