@@ -134,6 +134,9 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
 .solo #rowNotif{order:1;flex:1;min-width:0}
 .solo #rowNotif .erow{flex-wrap:nowrap}
 .solo #rowNotif input[type=range]{flex:1;min-width:60px}
+.cardpick{display:flex;gap:14px;align-items:flex-start;margin:12px 0 4px}
+#cardPrev{width:92px;height:auto;border-radius:6px;flex:none;box-shadow:0 2px 10px rgba(0,0,0,.4)}
+#rankChips,#specChips,#suitChips{margin-top:8px}
 .txt{width:100%;background:var(--felt-2);color:var(--chalk);border:1px solid var(--line);border-radius:6px;font:400 16px var(--f-body);padding:10px 12px;min-height:44px;margin-top:6px}
 .notif{position:absolute;z-index:2;pointer-events:none;display:flex;gap:.73em;align-items:flex-start;padding:.8em .93em;border-radius:1.47em;font-size:15px;box-sizing:border-box;background:rgba(60,60,64,.62);-webkit-backdrop-filter:blur(26px) saturate(1.6);backdrop-filter:blur(26px) saturate(1.6);color:#fff;font-family:-apple-system,"SF Pro Text","Helvetica Neue",system-ui,sans-serif;opacity:0;transform:translateY(22px) scale(.97);transition:opacity .35s ease,transform .45s cubic-bezier(.2,.9,.3,1.1)}
 #editor .notif{z-index:1}
@@ -171,7 +174,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   <header>
     <p class="kicker">Outil de scène</p>
     <h1>Marche Arrière</h1>
-    <p class="lede">Au toucher : le temps recule jusqu'à l'heure réelle, ou une notification SMS apparaît.</p>
+    <p class="lede">Au toucher : le temps recule jusqu'à l'heure réelle, une notification SMS apparaît, ou une carte surgit en fond d'écran.</p>
   </header>
 
   <section class="preview" aria-label="Aperçu">
@@ -216,6 +219,36 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     <div class="seg" role="radiogroup" aria-label="Effet">
       <label><input type="radio" name="effect" value="time"><span><strong>Le temps recule</strong><small>L'heure est en avance puis revient à l'heure réelle.</small></span></label>
       <label><input type="radio" name="effect" value="sms"><span><strong>Notification SMS</strong><small>Heure réelle ; un message apparaît au toucher.</small></span></label>
+      <label><input type="radio" name="effect" value="card"><span><strong>Carte en fond d'écran</strong><small>Première touche : la carte apparaît. Seconde : elle disparaît.</small></span></label>
+    </div>
+    <div id="cardBox" hidden>
+      <div class="cardpick">
+        <canvas id="cardPrev" width="210" height="294"></canvas>
+        <div style="flex:1;min-width:0">
+          <p class="help" id="cardLabel" style="margin:0 0 8px;color:var(--chalk);font-size:15px"></p>
+          <div class="chips" id="suitChips">
+            <button class="chip" type="button" data-s="S" style="font-size:22px">♠&#xFE0E;</button>
+            <button class="chip" type="button" data-s="H" style="font-size:22px;color:#e0525a">♥&#xFE0E;</button>
+            <button class="chip" type="button" data-s="D" style="font-size:22px;color:#e0525a">♦&#xFE0E;</button>
+            <button class="chip" type="button" data-s="C" style="font-size:22px">♣&#xFE0E;</button>
+          </div>
+        </div>
+      </div>
+      <div class="chips" id="rankChips"><button class="chip" type="button" data-r="A">A</button><button class="chip" type="button" data-r="2">2</button><button class="chip" type="button" data-r="3">3</button><button class="chip" type="button" data-r="4">4</button><button class="chip" type="button" data-r="5">5</button><button class="chip" type="button" data-r="6">6</button><button class="chip" type="button" data-r="7">7</button><button class="chip" type="button" data-r="8">8</button><button class="chip" type="button" data-r="9">9</button><button class="chip" type="button" data-r="10">10</button><button class="chip" type="button" data-r="J">J</button><button class="chip" type="button" data-r="Q">Q</button><button class="chip" type="button" data-r="K">K</button></div>
+      <div class="chips" id="specChips">
+        <button class="chip" type="button" data-c="JKC">Joker</button>
+        <button class="chip" type="button" data-c="JKB">Joker N&amp;B</button>
+        <button class="chip" type="button" data-c="BL">Blanche</button>
+        <button class="chip" type="button" data-c="BR">Dos rouge</button>
+        <button class="chip" type="button" data-c="BB">Dos bleu</button>
+      </div>
+      <label class="help" for="cardFit">Affichage de la carte</label>
+      <select id="cardFit" class="txt"><option value="fit">Carte entière, posée sur le fond</option><option value="full">Plein écran (recadrée sur les côtés)</option></select>
+      <div class="row" id="cardSizeRow"><label for="cardSize">Taille</label><output id="cardSizeVal"></output><input id="cardSize" type="range" min="50" max="100" step="1"></div>
+      <label class="help" for="cardFade">Apparition</label>
+      <select id="cardFade" class="txt"><option value="fade">Fondu rapide</option><option value="cut">Instantanée</option></select>
+      <div class="row"><label for="delay2">Délai avant la disparition</label><output id="delay2Val"></output><input id="delay2" type="range" min="0" max="15" step="0.5"></div>
+      <label class="check"><input id="cardClock" type="checkbox">Garder l'heure par-dessus la carte</label>
     </div>
     <div id="smsBox" hidden>
       <label class="help" for="smsFrom">Nom de l'expéditeur</label>
@@ -248,7 +281,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   </section>
 
   <section class="step">
-    <h2><span class="n">5</span>Au toucher</h2>
+    <h2><span class="n" id="nTouch">5</span>Au toucher</h2>
     <div class="seg" id="modeSeg" role="radiogroup" aria-label="Déclenchement">
       <label><input type="radio" name="mode" value="auto"><span><strong>Recul continu</strong><small>Un toucher lance tout le recul.</small></span></label>
       <label><input type="radio" name="mode" value="step"><span><strong>Cran par cran</strong><small>Un toucher enlève une minute.</small></span></label>
@@ -366,7 +399,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     slab: 'Rockwell,"Roboto Slab","Courier New",serif',
     mono: 'ui-monospace,"SF Mono",Menlo,Consolas,monospace'
   };
-  var DEF = {minutes:10, effect:'time', smsFrom:'Messages', smsText:'le sept de cœur', smsY:60, smsX:50, smsS:1, smsSound:true, mode:'auto', duration:5, delay:0, autostart:true, bgMode:'mask', rawS:1, rawX:0, rawY:0, extra:0, layout:'1', debug:false, x:50, y:22.5, size:28, color:'#ffffff', showDate:true, fill:'mirror', font:'sf', weight:600, width:100, spacing:0, h12:false, zero:true, cstyle:'solid', copacity:100, shadow:false, dateFmt:'long', dateSize:20};
+  var DEF = {minutes:10, effect:'time', card:'AS', cardFit:'fit', cardSize:88, cardClock:true, cardFade:'fade', delay2:0, smsFrom:'Messages', smsText:'le sept de cœur', smsY:60, smsX:50, smsS:1, smsSound:true, mode:'auto', duration:5, delay:0, autostart:true, bgMode:'mask', rawS:1, rawX:0, rawY:0, extra:0, layout:'1', debug:false, x:50, y:22.5, size:28, color:'#ffffff', showDate:true, fill:'mirror', font:'sf', weight:600, width:100, spacing:0, h12:false, zero:true, cstyle:'solid', copacity:100, shadow:false, dateFmt:'long', dateSize:20};
   var DEF_ZONES = [{x:0, y:12, w:100, h:17}];
   var KEY = 'marche-arriere-v4';
   var S = Object.assign({}, DEF, {zones: DEF_ZONES.map(function(z){ return Object.assign({}, z); })});
@@ -493,6 +526,207 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   }
 
   /* ---------- rendu ---------- */
+  /* ---------- cartes à jouer, format poker (63,5 × 88,9 mm) ---------- */
+  var CARD_W = 750, CARD_H = 1050, CARD_RED = '#c4161c', CARD_BLK = '#17171c', CARD_BLUE = '#1f4aa0', CARD_GOLD = '#e0ac2e';
+  var CARD_RANKS = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+  var CARD_SUITS = {S:'♠', H:'♥', D:'♦', C:'♣'};
+  function cardRound(ctx, x, y, w, h, r){
+    ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+  function suitShape(ctx, s, cx, cy, sz, color, flip){
+    ctx.save(); ctx.translate(cx, cy); ctx.scale(sz / 100, (flip ? -1 : 1) * sz / 100); ctx.fillStyle = color; ctx.beginPath();
+    if (s === 'H'){
+      ctx.moveTo(0, 46); ctx.bezierCurveTo(-8, 36, -50, 12, -50, -14); ctx.bezierCurveTo(-50, -38, -22, -48, 0, -24);
+      ctx.bezierCurveTo(22, -48, 50, -38, 50, -14); ctx.bezierCurveTo(50, 12, 8, 36, 0, 46);
+    } else if (s === 'D'){
+      ctx.moveTo(0, -52); ctx.quadraticCurveTo(10, -18, 38, 0); ctx.quadraticCurveTo(10, 18, 0, 52);
+      ctx.quadraticCurveTo(-10, 18, -38, 0); ctx.quadraticCurveTo(-10, -18, 0, -52);
+    } else if (s === 'S'){
+      ctx.moveTo(0, -50); ctx.bezierCurveTo(8, -30, 50, -8, 50, 16); ctx.bezierCurveTo(50, 40, 16, 40, 5, 22);
+      ctx.quadraticCurveTo(6, 40, 14, 50); ctx.lineTo(-14, 50); ctx.quadraticCurveTo(-6, 40, -5, 22);
+      ctx.bezierCurveTo(-16, 40, -50, 40, -50, 16); ctx.bezierCurveTo(-50, -8, -8, -30, 0, -50);
+    } else {
+      ctx.arc(0, -25, 24, 0, 7); ctx.moveTo(-2, 0); ctx.arc(-25, 13, 24, 0, 7); ctx.moveTo(48, 13); ctx.arc(25, 13, 24, 0, 7);
+      ctx.moveTo(-5, 4); ctx.lineTo(5, 4); ctx.quadraticCurveTo(5, 36, 17, 50); ctx.lineTo(-17, 50); ctx.quadraticCurveTo(-5, 36, -5, 4);
+      ctx.moveTo(14, 2); ctx.arc(0, 2, 14, 0, 7);
+    }
+    ctx.fill(); ctx.restore();
+  }
+  var CARD_PIPS = (function(){
+    var L = 225, C = 375, R = 525, o = {};
+    o['2'] = [[C,0],[C,1]]; o['3'] = [[C,0],[C,.5],[C,1]];
+    o['4'] = [[L,0],[R,0],[L,1],[R,1]]; o['5'] = o['4'].concat([[C,.5]]);
+    o['6'] = [[L,0],[R,0],[L,.5],[R,.5],[L,1],[R,1]]; o['7'] = o['6'].concat([[C,.25]]);
+    o['8'] = o['6'].concat([[C,.25],[C,.75]]);
+    o['9'] = [[L,0],[R,0],[L,1/3],[R,1/3],[L,2/3],[R,2/3],[L,1],[R,1],[C,.5]];
+    o['10'] = [[L,0],[R,0],[L,1/3],[R,1/3],[L,2/3],[R,2/3],[L,1],[R,1],[C,1/6],[C,5/6]];
+    return o;
+  })();
+  function cardFace(ctx){
+    ctx.fillStyle = '#fbfbf7'; cardRound(ctx, 0, 0, CARD_W, CARD_H, 42); ctx.fill();
+    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.2)'; ctx.stroke();
+  }
+  function cardIndex(ctx, rank, suit, col){
+    for (var k = 0; k < 2; k++){
+      ctx.save();
+      if (k){ ctx.translate(CARD_W, CARD_H); ctx.rotate(Math.PI); }
+      ctx.fillStyle = col; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.font = '700 ' + (rank === '10' ? 92 : 112) + 'px Georgia,"Times New Roman",serif';
+      ctx.fillText(rank, 66, 98);
+      suitShape(ctx, suit, 66, 190, 64, col);
+      ctx.restore();
+    }
+  }
+  function courtHalf(ctx, rank, suit, red){
+    var robe = red ? CARD_RED : CARD_BLUE, trim = red ? CARD_BLUE : CARD_RED, skin = '#f2d0a4', ink = '#2a1c10';
+    ctx.lineWidth = 4; ctx.strokeStyle = ink;
+    ctx.beginPath(); ctx.moveTo(190, 525); ctx.quadraticCurveTo(200, 430, 290, 408); ctx.lineTo(460, 408); ctx.quadraticCurveTo(550, 430, 560, 525); ctx.closePath();
+    ctx.fillStyle = robe; ctx.fill(); ctx.stroke();
+    ctx.fillStyle = CARD_GOLD; ctx.fillRect(360, 430, 30, 95);
+    ctx.beginPath(); ctx.moveTo(290, 408); ctx.lineTo(375, 470); ctx.lineTo(460, 408); ctx.lineTo(430, 400); ctx.lineTo(375, 440); ctx.lineTo(320, 400); ctx.closePath(); ctx.fillStyle = trim; ctx.fill(); ctx.stroke();
+    ctx.fillStyle = skin; ctx.beginPath(); ctx.rect(345, 380, 60, 40); ctx.fill();
+    if (rank === 'Q'){ ctx.fillStyle = '#7a4a1f'; ctx.beginPath(); ctx.ellipse(375, 335, 90, 96, 0, 0, 7); ctx.fill(); ctx.stroke(); }
+    ctx.fillStyle = skin; ctx.beginPath(); ctx.ellipse(375, 335, 62, 76, 0, 0, 7); ctx.fill(); ctx.stroke();
+    if (rank === 'K'){
+      ctx.fillStyle = '#7b5a36'; ctx.beginPath(); ctx.moveTo(318, 340); ctx.quadraticCurveTo(320, 420, 375, 424); ctx.quadraticCurveTo(430, 420, 432, 340);
+      ctx.quadraticCurveTo(405, 372, 375, 366); ctx.quadraticCurveTo(345, 372, 318, 340); ctx.fill(); ctx.stroke();
+    }
+    ctx.fillStyle = ink; ctx.beginPath(); ctx.ellipse(350, 322, 7, 5, 0, 0, 7); ctx.ellipse(400, 322, 7, 5, 0, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(375, 326); ctx.lineTo(370, 352); ctx.lineTo(381, 352); ctx.stroke();
+    if (rank !== 'K'){ ctx.beginPath(); ctx.moveTo(356, 372); ctx.quadraticCurveTo(375, 384, 394, 372); ctx.stroke(); }
+    ctx.fillStyle = CARD_GOLD;
+    if (rank === 'K'){
+      ctx.beginPath(); ctx.moveTo(305, 276); ctx.lineTo(295, 196); ctx.lineTo(335, 232); ctx.lineTo(375, 180); ctx.lineTo(415, 232); ctx.lineTo(455, 196); ctx.lineTo(445, 276); ctx.closePath(); ctx.fill(); ctx.stroke();
+    } else if (rank === 'Q'){
+      ctx.beginPath(); ctx.moveTo(310, 270); ctx.lineTo(300, 214); ctx.lineTo(330, 236); ctx.lineTo(352, 192); ctx.lineTo(375, 230); ctx.lineTo(398, 192); ctx.lineTo(420, 236); ctx.lineTo(450, 214); ctx.lineTo(440, 270); ctx.closePath(); ctx.fill(); ctx.stroke();
+    } else {
+      ctx.fillStyle = robe; ctx.beginPath(); ctx.moveTo(310, 290); ctx.quadraticCurveTo(320, 210, 395, 214); ctx.lineTo(445, 290); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = CARD_GOLD; ctx.fillRect(310, 278, 135, 16);
+      ctx.strokeStyle = trim; ctx.lineWidth = 9; ctx.beginPath(); ctx.moveTo(380, 222); ctx.quadraticCurveTo(470, 150, 520, 230); ctx.stroke();
+    }
+    ctx.fillStyle = trim; ctx.beginPath(); ctx.arc(375, 282, 7, 0, 7); ctx.fill();
+  }
+  function cardCourt(ctx, rank, suit){
+    var red = suit === 'H' || suit === 'D', col = red ? CARD_RED : CARD_BLK;
+    ctx.fillStyle = '#f8efd3'; ctx.fillRect(150, 150, 450, 750);
+    ctx.lineWidth = 4; ctx.strokeStyle = '#2a1c10'; ctx.strokeRect(150, 150, 450, 750);
+    for (var k = 0; k < 2; k++){
+      ctx.save();
+      if (k){ ctx.translate(750, 1050); ctx.rotate(Math.PI); }
+      ctx.beginPath(); ctx.rect(150, 150, 450, 375); ctx.clip();
+      courtHalf(ctx, rank, suit, red);
+      suitShape(ctx, suit, 215, 205, 58, col);
+      ctx.restore();
+    }
+    ctx.lineWidth = 3; ctx.strokeStyle = '#2a1c10'; ctx.beginPath(); ctx.moveTo(150, 525); ctx.lineTo(600, 525); ctx.stroke();
+  }
+  function cardJoker(ctx, mono){
+    var c1 = mono ? '#222' : CARD_RED, c2 = mono ? '#fff' : CARD_BLUE, c3 = mono ? '#888' : CARD_GOLD, ink = '#241810';
+    ctx.fillStyle = mono ? '#f3f3f0' : '#f8efd3'; ctx.fillRect(150, 150, 450, 750);
+    ctx.lineWidth = 4; ctx.strokeStyle = ink; ctx.strokeRect(150, 150, 450, 750);
+    ctx.save(); ctx.beginPath(); ctx.rect(150, 150, 450, 750); ctx.clip();
+    /* corps losangé */
+    ctx.beginPath(); ctx.moveTo(285, 610); ctx.lineTo(465, 610); ctx.lineTo(560, 900); ctx.lineTo(190, 900); ctx.closePath(); ctx.fillStyle = c1; ctx.fill();
+    ctx.save(); ctx.clip();
+    for (var r = 0; r < 9; r++) for (var q = 0; q < 8; q++){
+      var cx = 190 + q * 52 + (r % 2) * 26, cy = 600 + r * 36;
+      ctx.beginPath(); ctx.moveTo(cx, cy - 26); ctx.lineTo(cx + 26, cy); ctx.lineTo(cx, cy + 26); ctx.lineTo(cx - 26, cy); ctx.closePath();
+      ctx.fillStyle = (r + q) % 2 ? c2 : c3; ctx.fill();
+    }
+    ctx.restore();
+    ctx.lineWidth = 4; ctx.strokeStyle = ink; ctx.beginPath(); ctx.moveTo(285, 610); ctx.lineTo(465, 610); ctx.lineTo(560, 900); ctx.moveTo(190, 900); ctx.lineTo(285, 610); ctx.stroke();
+    /* chapeau à trois pointes */
+    function tail(x0, y0, cx1, cy1, x1, y1, col){
+      ctx.beginPath(); ctx.moveTo(x0 - 40, 440); ctx.quadraticCurveTo(cx1, cy1, x1, y1); ctx.quadraticCurveTo(cx1 + 30, cy1 + 120, x0 + 40, 440); ctx.closePath();
+      ctx.fillStyle = col; ctx.fill(); ctx.lineWidth = 4; ctx.stroke();
+      ctx.beginPath(); ctx.arc(x1, y1, 22, 0, 7); ctx.fillStyle = mono ? '#bbb' : CARD_GOLD; ctx.fill(); ctx.stroke();
+    }
+    tail(300, 440, 215, 330, 186, 410, c2); tail(450, 440, 540, 330, 566, 410, c1); tail(375, 440, 375, 260, 375, 225, c3);
+    ctx.fillStyle = c1; ctx.fillRect(298, 420, 154, 34); ctx.lineWidth = 4; ctx.strokeRect(298, 420, 154, 34);
+    /* visage */
+    ctx.fillStyle = '#f2d0a4'; ctx.beginPath(); ctx.arc(375, 515, 78, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = ink; ctx.beginPath(); ctx.ellipse(348, 500, 7, 6, 0, 0, 7); ctx.ellipse(402, 500, 7, 6, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = mono ? '#999' : '#e9747a'; ctx.beginPath(); ctx.arc(375, 524, 9, 0, 7); ctx.fill();
+    ctx.lineWidth = 5; ctx.strokeStyle = ink; ctx.beginPath(); ctx.moveTo(335, 545); ctx.quadraticCurveTo(375, 592, 415, 545); ctx.stroke();
+    /* fraise */
+    ctx.fillStyle = '#fff'; ctx.lineWidth = 3;
+    for (var f = 0; f < 9; f++){ var a = Math.PI * (f / 8); ctx.beginPath(); ctx.arc(375 - Math.cos(a) * 108, 600 + Math.sin(a) * 22, 26, 0, 7); ctx.fill(); ctx.stroke(); }
+    ctx.restore();
+  }
+  function cardJokerIndex(ctx, mono){
+    for (var k = 0; k < 2; k++){
+      ctx.save();
+      if (k){ ctx.translate(CARD_W, CARD_H); ctx.rotate(Math.PI); }
+      ctx.fillStyle = mono ? CARD_BLK : CARD_RED; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.font = '700 54px Georgia,"Times New Roman",serif';
+      'JOKER'.split('').forEach(function(ch, i){ ctx.fillText(ch, 66, 78 + i * 58); });
+      ctx.font = '700 60px Georgia,serif'; ctx.fillText('★', 66, 400);
+      ctx.restore();
+    }
+  }
+  function cardBack(ctx, base, dark){
+    ctx.fillStyle = '#fbfbf7'; cardRound(ctx, 0, 0, CARD_W, CARD_H, 42); ctx.fill();
+    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.2)'; ctx.stroke();
+    var m = 40, iw = CARD_W - 2 * m, ih = CARD_H - 2 * m;
+    ctx.save(); cardRound(ctx, m, m, iw, ih, 14); ctx.fillStyle = base; ctx.fill(); ctx.clip();
+    ctx.strokeStyle = 'rgba(255,255,255,.28)'; ctx.lineWidth = 3;
+    for (var d = -1400; d < 1400; d += 46){
+      ctx.beginPath(); ctx.moveTo(375 + d - 1050, 525 - 1050 * 1); ctx.lineTo(375 + d + 1050, 525 + 1050); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(375 + d + 1050, 525 - 1050); ctx.lineTo(375 + d - 1050, 525 + 1050); ctx.stroke();
+    }
+    ctx.fillStyle = 'rgba(255,255,255,.4)';
+    for (var gx = -9; gx <= 9; gx++) for (var gy = -13; gy <= 13; gy++){
+      if ((gx + gy) % 2) continue; ctx.beginPath(); ctx.arc(375 + gx * 46, 525 + gy * 46, 5, 0, 7); ctx.fill();
+    }
+    ctx.restore();
+    ctx.strokeStyle = '#fbfbf7'; ctx.lineWidth = 7; cardRound(ctx, m + 24, m + 24, iw - 48, ih - 48, 10); ctx.stroke();
+    ctx.lineWidth = 3; cardRound(ctx, m + 40, m + 40, iw - 80, ih - 80, 8); ctx.stroke();
+    /* médaillon central */
+    ctx.save(); ctx.translate(375, 525);
+    ctx.fillStyle = base; ctx.beginPath(); ctx.arc(0, 0, 236, 0, 7); ctx.fill();
+    ctx.fillStyle = '#fbfbf7'; ctx.beginPath(); ctx.arc(0, 0, 214, 0, 7); ctx.fill();
+    ctx.fillStyle = base; ctx.beginPath(); ctx.arc(0, 0, 196, 0, 7); ctx.fill();
+    for (var p = 0; p < 16; p++){
+      ctx.save(); ctx.rotate(p * Math.PI / 8); ctx.fillStyle = '#fbfbf7'; ctx.beginPath(); ctx.ellipse(0, -128, 22, 62, 0, 0, 7); ctx.fill(); ctx.restore();
+    }
+    ctx.fillStyle = base; ctx.beginPath(); ctx.arc(0, 0, 86, 0, 7); ctx.fill();
+    ctx.fillStyle = '#fbfbf7'; ctx.beginPath(); ctx.arc(0, 0, 74, 0, 7); ctx.fill();
+    ctx.fillStyle = base;
+    ctx.beginPath(); for (var s = 0; s < 16; s++){ var rr = s % 2 ? 30 : 66, aa = s * Math.PI / 8 - Math.PI / 2; ctx.lineTo(Math.cos(aa) * rr, Math.sin(aa) * rr); } ctx.closePath(); ctx.fill();
+    ctx.restore();
+    [[104, 104], [646, 104], [104, 946], [646, 946]].forEach(function(c){ ctx.fillStyle = '#fbfbf7'; ctx.beginPath(); ctx.arc(c[0], c[1], 22, 0, 7); ctx.fill(); ctx.fillStyle = base; ctx.beginPath(); ctx.arc(c[0], c[1], 10, 0, 7); ctx.fill(); });
+  }
+  var cardCache = {};
+  function cardCanvas(id){
+    if (cardCache[id]) return cardCache[id];
+    var cv = document.createElement('canvas'); cv.width = CARD_W; cv.height = CARD_H;
+    var ctx = cv.getContext('2d');
+    if (id === 'BR') cardBack(ctx, '#b3171f');
+    else if (id === 'BB') cardBack(ctx, '#173d8f');
+    else if (id === 'BL'){ cardFace(ctx); }
+    else if (id === 'JKC' || id === 'JKB'){ var mono = id === 'JKB'; cardFace(ctx); cardJoker(ctx, mono); cardJokerIndex(ctx, mono); }
+    else {
+      var suit = id.slice(-1), rank = id.slice(0, -1), col = (suit === 'H' || suit === 'D') ? CARD_RED : CARD_BLK;
+      cardFace(ctx);
+      if (rank === 'J' || rank === 'Q' || rank === 'K') cardCourt(ctx, rank, suit);
+      else if (rank === 'A') suitShape(ctx, suit, 375, 525, 340, col);
+      else {
+        var top = 215, span = 620;
+        CARD_PIPS[rank].forEach(function(pt){ suitShape(ctx, suit, pt[0], top + pt[1] * span, 136, col, pt[1] > .5); });
+      }
+      cardIndex(ctx, rank, suit, col);
+    }
+    cardCache[id] = cv; return cv;
+  }
+  function cardName(id){
+    var n = {BR:'Dos rouge', BB:'Dos bleu', BL:'Carte blanche', JKC:'Joker couleur', JKB:'Joker noir et blanc'};
+    if (n[id]) return n[id];
+    var N = {S:'pique', H:'cœur', D:'carreau', C:'trèfle'}, R = {A:'As', J:'Valet', Q:'Dame', K:'Roi'};
+    var r = id.slice(0, -1), s = id.slice(-1);
+    return (R[r] || r) + (R[r] ? ' de ' : ' de ') + N[s];
+  }
+
   function makeRenderer(canvas){
     var ctx = canvas.getContext('2d'), bg = null, key = '';
     function fit(w, h){
@@ -545,7 +779,22 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
         var gs = Math.max(cw / img.width, ch / img.height), gw = img.width * gs, gh = img.height * gs;
         ctx.save(); ctx.globalAlpha = .45; ctx.drawImage(img, (cw - gw) / 2, (ch - gh) / 2, gw, gh); ctx.restore();
       }
-      if (!o.hideClock){
+      var cardShown = !!(o.card && o.card.a > 0);
+      if (cardShown){
+        var cc = cardCanvas(o.card.id);
+        ctx.save(); ctx.globalAlpha = o.card.a;
+        if (S.cardFit === 'full'){
+          var cs = Math.max(cw / CARD_W, ch / CARD_H);
+          ctx.drawImage(cc, (cw - CARD_W * cs) / 2, (ch - CARD_H * cs) / 2, CARD_W * cs, CARD_H * cs);
+        } else {
+          var kw = cw * clamp(S.cardSize, 40, 100) / 100, kh = kw * CARD_H / CARD_W;
+          if (kh > ch * .97){ kh = ch * .97; kw = kh * CARD_W / CARD_H; }
+          ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = cw * .04; ctx.shadowOffsetY = cw * .012;
+          ctx.drawImage(cc, (cw - kw) / 2, (ch - kh) / 2, kw, kh);
+        }
+        ctx.restore();
+      }
+      if (!o.hideClock && !(cardShown && !S.cardClock)){
         var size = S.size / 100 * cw, cx = S.x / 100 * cw, cy = S.y / 100 * ch;
         var fam = FONTS[S.font] || FONTS.sf, op = clamp(S.copacity, 20, 100) / 100, wx = clamp(S.width, 60, 160) / 100;
         ctx.save();
@@ -629,9 +878,9 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     ph.style.aspectRatio = String(a);
     var r = ph.getBoundingClientRect();
     pvR.fit(r.width, r.height);
-    pvR.render(new Date(Date.now() + (S.effect === 'sms' ? 0 : S.minutes) * 60000));
+    pvR.render(new Date(Date.now() + (S.effect === 'time' ? S.minutes : 0) * 60000), S.effect === 'card' ? {card: {id: S.card, a: 1}} : null);
     var now = new Date();
-    if (S.effect === 'sms') $('#live').innerHTML = 'Il est <b>' + hm(now) + '</b> · l\'écran garde l\'heure réelle'; else
+    if (S.effect !== 'time') $('#live').innerHTML = 'Il est <b>' + hm(now) + '</b> · l\'écran garde l\'heure réelle'; else
     $('#live').innerHTML = 'Il est <b>' + hm(now) + '</b> · l\'écran affichera <b>' + hm(new Date(now.getTime() + S.minutes * 60000)) + '</b>';
   }
   function refreshUI(){
@@ -655,12 +904,15 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     $('#minutes').value = S.minutes;
     var sms = S.effect === 'sms';
     document.querySelectorAll('input[name=effect]').forEach(function(r){ r.checked = r.value === S.effect; });
-    $('#smsBox').hidden = !sms; $('#secMin').hidden = sms; $('#modeSeg').hidden = sms;
+    var card = S.effect === 'card', nonTime = S.effect !== 'time';
+    $('#smsBox').hidden = !sms; $('#cardBox').hidden = !card; $('#secMin').hidden = nonTime; $('#modeSeg').hidden = nonTime;
+    if (card) syncCard();
+    $('#nTouch').textContent = nonTime ? '4' : '5';
     $('#smsFrom').value = S.smsFrom; $('#smsText').value = S.smsText;
     $('#placeNotif').disabled = !img; $('#smsSound').checked = !!S.smsSound;
     document.querySelectorAll('.chip').forEach(function(c){ c.setAttribute('aria-pressed', String(+c.dataset.m === S.minutes)); });
     document.querySelectorAll('input[name=mode]').forEach(function(r){ r.checked = r.value === S.mode; });
-    $('#durRow').hidden = sms || S.mode !== 'auto';
+    $('#durRow').hidden = nonTime || S.mode !== 'auto';
     $('#duration').value = S.duration; $('#durVal').textContent = S.duration + ' s';
     $('#delay').value = S.delay; $('#delayVal').textContent = S.delay > 0 ? S.delay + ' s' : 'Aucun';
     $('#autostart').checked = !!S.autostart;
@@ -692,6 +944,27 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   document.querySelectorAll('input[name=mode]').forEach(function(r){
     r.addEventListener('change', function(){ if (r.checked){ S.mode = r.value; save(); refreshUI(); } });
   });
+  function syncCard(){
+    var std = !/^(BR|BB|BL|JKC|JKB)$/.test(S.card), cs = std ? S.card.slice(-1) : '', cr = std ? S.card.slice(0, -1) : '';
+    document.querySelectorAll('#suitChips .chip').forEach(function(c){ c.setAttribute('aria-pressed', String(c.dataset.s === cs)); });
+    document.querySelectorAll('#rankChips .chip').forEach(function(c){ c.setAttribute('aria-pressed', String(c.dataset.r === cr)); });
+    document.querySelectorAll('#specChips .chip').forEach(function(c){ c.setAttribute('aria-pressed', String(c.dataset.c === S.card)); });
+    $('#cardLabel').textContent = cardName(S.card);
+    var pv = $('#cardPrev'), g = pv.getContext('2d'); g.clearRect(0, 0, pv.width, pv.height); g.drawImage(cardCanvas(S.card), 0, 0, pv.width, pv.height);
+    $('#cardFit').value = S.cardFit; $('#cardFade').value = S.cardFade; $('#cardClock').checked = !!S.cardClock;
+    $('#cardSize').value = S.cardSize; $('#cardSizeVal').textContent = S.cardSize + ' %'; $('#cardSizeRow').hidden = S.cardFit === 'full';
+    $('#delay2').value = S.delay2; $('#delay2Val').textContent = S.delay2 > 0 ? S.delay2 + ' s' : 'Aucun';
+  }
+  function setCard(id){ S.card = id; save(); refreshUI(); }
+  function isStd(){ return !/^(BR|BB|BL|JKC|JKB)$/.test(S.card); }
+  $('#suitChips').addEventListener('click', function(e){ var c = e.target.closest('.chip'); if (c) setCard((isStd() ? S.card.slice(0, -1) : 'A') + c.dataset.s); });
+  $('#rankChips').addEventListener('click', function(e){ var c = e.target.closest('.chip'); if (c) setCard(c.dataset.r + (isStd() ? S.card.slice(-1) : 'S')); });
+  $('#specChips').addEventListener('click', function(e){ var c = e.target.closest('.chip'); if (c) setCard(c.dataset.c); });
+  $('#cardFit').addEventListener('change', function(e){ S.cardFit = e.target.value; save(); refreshUI(); });
+  $('#cardFade').addEventListener('change', function(e){ S.cardFade = e.target.value; save(); });
+  $('#cardSize').addEventListener('input', function(e){ S.cardSize = parseFloat(e.target.value); save(); refreshUI(); });
+  $('#delay2').addEventListener('input', function(e){ S.delay2 = parseFloat(e.target.value); save(); refreshUI(); });
+  $('#cardClock').addEventListener('change', function(e){ S.cardClock = e.target.checked; save(); updatePreview(); });
   document.querySelectorAll('input[name=effect]').forEach(function(r){
     r.addEventListener('change', function(){ if (r.checked){ S.effect = r.value; save(); refreshUI(); } });
   });
@@ -760,7 +1033,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     var erase = ed.tool === 'erase', bgt = ed.tool === 'bg', nt = ed.tool === 'notif';
     var en = $('#enotif'); en.classList.toggle('on', nt);
     if (nt){ $('#enFrom').textContent = S.smsFrom || 'Messages'; $('#enText').textContent = S.smsText || ''; placeNotif(en, $('#ec').getBoundingClientRect().width); }
-    edR.render(new Date(Date.now() + (S.effect === 'sms' ? 0 : S.minutes) * 60000), {overlay: erase, draft: ed.draft, orig: ed.orig, hideClock: ed.orig || bgt, ghost: bgt && ed.ghost});
+    edR.render(new Date(Date.now() + (S.effect === 'time' ? S.minutes : 0) * 60000), {overlay: erase, draft: ed.draft, orig: ed.orig, hideClock: ed.orig || bgt, ghost: bgt && ed.ghost});
   }
   function queueEd(){ if (!raf) raf = requestAnimationFrame(drawEd); }
   /* taille plein écran : sur iPhone en mode application, la zone visible peut être plus courte que l'écran */
@@ -948,11 +1221,26 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   /* ---------- scène ---------- */
   var running = false, busy = false, timer = null, offset = 0, wl = null;
 
-  var rafId = 0, rollPrev = 0, rollQ = 1;
+  var rafId = 0, rollPrev = 0, rollQ = 1, cardOn = false, cardA = 0, cardRaf = 0;
+  function animCard(to, done){
+    cancelAnimationFrame(cardRaf);
+    var from = cardA, dur = S.cardFade === 'fade' ? 450 : 0, t0 = 0;
+    if (!dur){ cardA = to; frame(); if (done) done(); return; }
+    function tick(now){
+      if (!running) return;
+      if (!t0) t0 = now;
+      var t = Math.min(1, (now - t0) / dur);
+      cardA = from + (to - from) * t; frame();
+      if (t < 1) cardRaf = requestAnimationFrame(tick); else if (done) done();
+    }
+    cardRaf = requestAnimationFrame(tick);
+  }
+  function resetCard(){ cancelAnimationFrame(cardRaf); cardOn = false; cardA = 0; }
   function shown(){ return new Date(Date.now() + offset * 60000); }
   function frame(){
     if (!running) return;
     var o = S.debug ? {debug: debugInfo()} : {};
+    if (cardA > 0) o.card = {id: S.card, a: cardA};
     if (rollQ < 1) o.roll = {prev: new Date(Date.now() + rollPrev * 60000), q: rollQ};
     stR.render(shown(), o);
   }
@@ -961,7 +1249,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   window.addEventListener('orientationchange', function(){ setTimeout(refit, 250); });
   if (window.visualViewport) window.visualViewport.addEventListener('resize', refit);
 
-  function startOff(){ return S.effect === 'sms' ? 0 : S.minutes; }
+  function startOff(){ return S.effect === 'time' ? S.minutes : 0; }
   var notif = $('#notif'), smsOn = false, actx = null;
   function ding(){
     try {
@@ -983,6 +1271,14 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   }
   function hideSms(){ smsOn = false; notif.classList.remove('on'); }
   function rewind(){
+    if (S.effect === 'card'){
+      if (busy) return;
+      var on = !cardOn, d = (on ? S.delay : S.delay2) * 1000;
+      function go(){ timer = null; if (!running){ busy = false; return; } cardOn = on; animCard(on ? 1 : 0, function(){ busy = false; }); }
+      busy = true;
+      if (d > 0) timer = setTimeout(go, d); else go();
+      return;
+    }
     if (S.effect === 'sms'){
       if (busy || smsOn) return;
       if (S.delay > 0){ busy = true; timer = setTimeout(function(){ timer = null; if (running) showSms(); else busy = false; }, S.delay * 1000); }
@@ -1014,12 +1310,12 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     }
     rafId = requestAnimationFrame(tick);
   }
-  function rearm(){ cancelAnimationFrame(rafId); rafId = 0; rollQ = 1; clearTimeout(timer); timer = null; busy = false; hideSms(); offset = startOff(); frame(); }
+  function rearm(){ resetCard(); cancelAnimationFrame(rafId); rafId = 0; rollQ = 1; clearTimeout(timer); timer = null; busy = false; hideSms(); offset = startOff(); frame(); }
 
   function lock(){ try { var p = navigator.wakeLock && navigator.wakeLock.request('screen'); if (p) p.then(function(l){ wl = l; }).catch(function(){}); } catch(e){} }
   function enter(){
     if (!img) return;
-    save(); running = true; busy = false; hideSms(); offset = startOff();
+    save(); running = true; busy = false; hideSms(); resetCard(); offset = startOff();
     setTourClass(true);
     setup.hidden = true; stage.hidden = false; window.scrollTo(0, 0);
     fitStage(); lock();
@@ -1030,7 +1326,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     } catch(e){}
   }
   function leave(){
-    running = false; busy = false; clearTimeout(timer); timer = null; cancelAnimationFrame(rafId); rafId = 0; rollQ = 1; hideSms();
+    running = false; busy = false; clearTimeout(timer); timer = null; cancelAnimationFrame(rafId); rafId = 0; rollQ = 1; hideSms(); resetCard();
     try { if (wl) wl.release(); } catch(e){} wl = null;
     try { if (document.fullscreenElement) document.exitFullscreen(); } catch(e){}
     setTourClass(false);
@@ -1087,7 +1383,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   }, 250);
 
   /* version et mode hors ligne */
-  var VERSION = '19', offlineReady = false;
+  var VERSION = '20', offlineReady = false;
   function buildNote(){ $('#buildNote').textContent = 'Version ' + VERSION + (offlineReady ? ' · prête hors ligne' : ''); }
   buildNote();
   try {
