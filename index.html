@@ -121,14 +121,15 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
 #stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .zone{position:absolute;top:0;width:28vw;height:14vh;background:transparent;z-index:3}
 .txt{width:100%;background:var(--felt-2);color:var(--chalk);border:1px solid var(--line);border-radius:6px;font:400 16px var(--f-body);padding:10px 12px;min-height:44px;margin-top:6px}
-#notif{position:absolute;left:3.5%;right:3.5%;z-index:2;pointer-events:none;display:flex;gap:11px;align-items:flex-start;padding:12px 14px;border-radius:22px;background:rgba(60,60,64,.62);-webkit-backdrop-filter:blur(26px) saturate(1.6);backdrop-filter:blur(26px) saturate(1.6);color:#fff;font-family:-apple-system,"SF Pro Text","Helvetica Neue",system-ui,sans-serif;opacity:0;transform:translateY(22px) scale(.97);transition:opacity .35s ease,transform .45s cubic-bezier(.2,.9,.3,1.1)}
-#notif.on{opacity:1;transform:none}
-#notif .ic{flex:none;width:38px;height:38px;border-radius:9px;background:linear-gradient(#5cf06f,#17c93b);display:flex;align-items:center;justify-content:center}
-#notif .ic svg{width:24px;height:24px}
-#notif .bd{flex:1;min-width:0}
-#notif .tp{display:flex;justify-content:space-between;gap:8px;font-size:15px;font-weight:600;line-height:1.25}
-#notif .tp small{font-weight:400;font-size:13px;color:rgba(255,255,255,.6)}
-#notif .tx{font-size:15px;line-height:1.28;margin-top:1px;color:rgba(255,255,255,.92);overflow-wrap:anywhere}
+.notif{position:absolute;z-index:2;pointer-events:none;display:flex;gap:.73em;align-items:flex-start;padding:.8em .93em;border-radius:1.47em;font-size:15px;box-sizing:border-box;background:rgba(60,60,64,.62);-webkit-backdrop-filter:blur(26px) saturate(1.6);backdrop-filter:blur(26px) saturate(1.6);color:#fff;font-family:-apple-system,"SF Pro Text","Helvetica Neue",system-ui,sans-serif;opacity:0;transform:translateY(22px) scale(.97);transition:opacity .35s ease,transform .45s cubic-bezier(.2,.9,.3,1.1)}
+#editor .notif{z-index:1}
+.notif.on{opacity:1;transform:none}
+#notif .ic,.notif .ic{flex:none;width:2.53em;height:2.53em;border-radius:.6em;background:linear-gradient(#5cf06f,#17c93b);display:flex;align-items:center;justify-content:center}
+.notif .ic svg{width:1.6em;height:1.6em}
+#notif .bd,.notif .bd{flex:1;min-width:0}
+#notif .tp,.notif .tp{display:flex;justify-content:space-between;gap:.5em;font-size:1em;font-weight:600;line-height:1.25}
+#notif .tp small,.notif .tp small{font-weight:400;font-size:.87em;color:rgba(255,255,255,.6)}
+#notif .tx,.notif .tx{font-size:1em;line-height:1.28;margin-top:1px;color:rgba(255,255,255,.92);overflow-wrap:anywhere}
 .zone.l{left:0}
 .zone.r{right:0}
 
@@ -207,10 +208,8 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
       <input class="txt" id="smsFrom" type="text" maxlength="40" autocomplete="off">
       <label class="help" for="smsText">Message</label>
       <input class="txt" id="smsText" type="text" maxlength="120" autocomplete="off">
-      <div class="row">
-        <label for="smsY">Position verticale</label><output id="smsYVal"></output>
-        <input id="smsY" type="range" min="25" max="88" step="1">
-      </div>
+      <button class="btn" id="placeNotif" type="button" disabled>Placer la notification</button>
+      <p class="help">Ouvre l'aperçu : glisse la notification où tu veux, pince pour la redimensionner.</p>
       <label class="check"><input id="smsSound" type="checkbox">Petit son de réception</label>
     </div>
   </section>
@@ -278,12 +277,14 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
 
 <div id="editor" hidden>
   <canvas id="ec"></canvas>
+  <div id="enotif" class="notif" aria-hidden="true"><div class="ic"><svg viewBox="0 0 24 24"><path fill="#fff" d="M12 3C6.5 3 2 6.6 2 11c0 2.3 1.2 4.4 3.2 5.8-.2 1.2-.8 2.4-1.7 3.4 1.9-.1 3.6-.8 4.8-1.7 1.1.3 2.4.5 3.7.5 5.5 0 10-3.6 10-8S17.5 3 12 3z"/></svg></div><div class="bd"><div class="tp"><span id="enFrom"></span><small>maintenant</small></div><div class="tx" id="enText"></div></div></div>
   <div class="ebar">
     <p class="hint" id="edHint"></p>
     <div class="erow">
       <button class="btn sm" id="toolClock" type="button" aria-pressed="true">Heure</button>
       <button class="btn sm" id="toolErase" type="button" aria-pressed="false">Effacer</button>
       <button class="btn sm" id="toolBg" type="button" aria-pressed="false" hidden>Photo</button>
+      <button class="btn sm" id="toolNotif" type="button" aria-pressed="false" hidden>Notif</button>
       <span class="grow"></span>
       <button class="btn sm solid" id="edDone" type="button" style="width:auto;min-height:40px;font-size:15px">Terminer</button>
     </div>
@@ -319,7 +320,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   <canvas id="sc"></canvas>
   <div class="zone l" id="zl"></div>
   <div class="zone r" id="zr"></div>
-  <div id="notif" aria-hidden="true"><div class="ic"><svg viewBox="0 0 24 24"><path fill="#fff" d="M12 3C6.5 3 2 6.6 2 11c0 2.3 1.2 4.4 3.2 5.8-.2 1.2-.8 2.4-1.7 3.4 1.9-.1 3.6-.8 4.8-1.7 1.1.3 2.4.5 3.7.5 5.5 0 10-3.6 10-8S17.5 3 12 3z"/></svg></div><div class="bd"><div class="tp"><span id="nFrom"></span><small>maintenant</small></div><div class="tx" id="nText"></div></div></div>
+  <div id="notif" class="notif" aria-hidden="true"><div class="ic"><svg viewBox="0 0 24 24"><path fill="#fff" d="M12 3C6.5 3 2 6.6 2 11c0 2.3 1.2 4.4 3.2 5.8-.2 1.2-.8 2.4-1.7 3.4 1.9-.1 3.6-.8 4.8-1.7 1.1.3 2.4.5 3.7.5 5.5 0 10-3.6 10-8S17.5 3 12 3z"/></svg></div><div class="bd"><div class="tp"><span id="nFrom"></span><small>maintenant</small></div><div class="tx" id="nText"></div></div></div>
 </div>
 <div id="probe" aria-hidden="true" style="position:absolute;left:-9999px;top:0;width:1px;height:1px;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)"></div>
 
@@ -327,7 +328,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
 (function(){
   var $ = function(s){ return document.querySelector(s); };
   var FONT = '-apple-system,"SF Pro Display","Helvetica Neue",Roboto,"Segoe UI",system-ui,sans-serif';
-  var DEF = {minutes:10, effect:'time', smsFrom:'Messages', smsText:'le sept de cœur', smsY:60, smsSound:true, mode:'auto', duration:5, delay:0, autostart:true, bgMode:'mask', rawS:1, rawX:0, rawY:0, extra:0, layout:'1', debug:false, x:50, y:22.5, size:28, color:'#ffffff', showDate:true, fill:'mirror'};
+  var DEF = {minutes:10, effect:'time', smsFrom:'Messages', smsText:'le sept de cœur', smsY:60, smsX:50, smsS:1, smsSound:true, mode:'auto', duration:5, delay:0, autostart:true, bgMode:'mask', rawS:1, rawX:0, rawY:0, extra:0, layout:'1', debug:false, x:50, y:22.5, size:28, color:'#ffffff', showDate:true, fill:'mirror'};
   var DEF_ZONES = [{x:0, y:12, w:100, h:17}];
   var KEY = 'marche-arriere-v4';
   var S = Object.assign({}, DEF, {zones: DEF_ZONES.map(function(z){ return Object.assign({}, z); })});
@@ -578,7 +579,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     document.querySelectorAll('input[name=effect]').forEach(function(r){ r.checked = r.value === S.effect; });
     $('#smsBox').hidden = !sms; $('#secMin').hidden = sms; $('#modeSeg').hidden = sms;
     $('#smsFrom').value = S.smsFrom; $('#smsText').value = S.smsText;
-    $('#smsY').value = S.smsY; $('#smsYVal').textContent = S.smsY + ' %'; $('#smsSound').checked = !!S.smsSound;
+    $('#placeNotif').disabled = !img; $('#smsSound').checked = !!S.smsSound;
     document.querySelectorAll('.chip').forEach(function(c){ c.setAttribute('aria-pressed', String(+c.dataset.m === S.minutes)); });
     document.querySelectorAll('input[name=mode]').forEach(function(r){ r.checked = r.value === S.mode; });
     $('#durRow').hidden = sms || S.mode !== 'auto';
@@ -618,7 +619,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   });
   $('#smsFrom').addEventListener('input', function(e){ S.smsFrom = e.target.value; save(); });
   $('#smsText').addEventListener('input', function(e){ S.smsText = e.target.value; save(); });
-  $('#smsY').addEventListener('input', function(e){ S.smsY = parseFloat(e.target.value); save(); refreshUI(); });
+  $('#placeNotif').addEventListener('click', function(){ openEditor('notif'); });
   $('#smsSound').addEventListener('change', function(e){ S.smsSound = e.target.checked; save(); });
   $('#duration').addEventListener('input', function(e){ S.duration = parseFloat(e.target.value); save(); refreshUI(); });
   $('#layout').addEventListener('change', function(e){ S.layout = e.target.value; save(); });
@@ -669,12 +670,18 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   });
 
   /* ---------- éditeur plein écran ---------- */
+  function placeNotif(el, W){
+    var sc = clamp(S.smsS, .6, 1.6), w = Math.min(96, 93 * sc), l = clamp(S.smsX - w / 2, 0, 100 - w);
+    el.style.width = w + '%'; el.style.left = l + '%'; el.style.top = S.smsY + '%'; el.style.fontSize = (15 * sc * W / 393) + 'px';
+  }
   var ed = {open: false, tool: 'clock', orig: false, draft: null, ghost: true};
   var raf = 0;
   function drawEd(){
     raf = 0;
     if (!ed.open) return;
-    var erase = ed.tool === 'erase', bgt = ed.tool === 'bg';
+    var erase = ed.tool === 'erase', bgt = ed.tool === 'bg', nt = ed.tool === 'notif';
+    var en = $('#enotif'); en.classList.toggle('on', nt);
+    if (nt){ $('#enFrom').textContent = S.smsFrom || 'Messages'; $('#enText').textContent = S.smsText || ''; placeNotif(en, $('#ec').getBoundingClientRect().width); }
     edR.render(new Date(Date.now() + (S.effect === 'sms' ? 0 : S.minutes) * 60000), {overlay: erase, draft: ed.draft, orig: ed.orig, hideClock: ed.orig || bgt, ghost: bgt && ed.ghost});
   }
   function queueEd(){ if (!raf) raf = requestAnimationFrame(drawEd); }
@@ -716,14 +723,17 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   }
   function fitEd(){ var s = layoutFull(editor); edR.fit(s.w, s.h); drawEd(); }
   function syncEd(){
-    var erase = ed.tool === 'erase', bgt = ed.tool === 'bg', raw = useRaw();
+    var erase = ed.tool === 'erase', bgt = ed.tool === 'bg', nt = ed.tool === 'notif', raw = useRaw(), sms = S.effect === 'sms';
+    $('#toolNotif').hidden = !sms; $('#toolNotif').setAttribute('aria-pressed', String(nt));
     $('#toolErase').hidden = raw; $('#toolBg').hidden = !raw;
-    $('#toolClock').setAttribute('aria-pressed', String(!erase && !bgt));
+    $('#toolClock').setAttribute('aria-pressed', String(!erase && !bgt && !nt));
     $('#toolErase').setAttribute('aria-pressed', String(erase));
     $('#toolBg').setAttribute('aria-pressed', String(bgt));
-    $('#rowClock').hidden = erase || bgt; $('#rowErase').hidden = !erase; $('#rowBg').hidden = !bgt;
+    $('#rowClock').hidden = erase || bgt || nt; $('#rowErase').hidden = !erase; $('#rowBg').hidden = !bgt;
     $('#bgGhost').setAttribute('aria-pressed', String(ed.ghost)); $('#bgScale').value = S.rawS;
-    $('#edHint').textContent = bgt
+    $('#edHint').textContent = nt
+      ? 'Glisse la notification pour la placer. Pince avec deux doigts pour la redimensionner.'
+      : bgt
       ? 'Glisse pour déplacer la photo, pince pour l\'agrandir. Ta capture apparaît en transparence pour caler le cadrage.'
       : erase
       ? (ed.orig ? 'Dessine un rectangle autour de l\'ancienne heure. Tu peux en ajouter plusieurs.' : 'Voici le résultat. Reviens à l\'original pour dessiner d\'autres zones.')
@@ -734,9 +744,9 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     $('#color').value = S.color; $('#showDate').checked = S.showDate; $('#size').value = S.size; $('#fill').value = S.fill;
     $('#zUndo').disabled = S.zones.length === 0; $('#zClear').disabled = S.zones.length === 0;
   }
-  function openEditor(){
+  function openEditor(tool){
     if (!img) return;
-    ed.open = true; ed.tool = 'clock'; ed.orig = false; ed.draft = null;
+    ed.open = true; ed.tool = tool === 'notif' ? 'notif' : 'clock'; ed.orig = false; ed.draft = null;
     setTourClass(true);
     setup.hidden = true; editor.hidden = false; window.scrollTo(0, 0);
     syncEd(); fitEd();
@@ -745,10 +755,11 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     setTourClass(false);
     ed.open = false; ed.draft = null; editor.hidden = true; setup.hidden = false; save(); refreshUI();
   }
-  $('#openEditor').addEventListener('click', openEditor);
+  $('#openEditor').addEventListener('click', function(){ openEditor(); });
   $('#edDone').addEventListener('click', closeEditor);
   $('#toolClock').addEventListener('click', function(){ ed.tool = 'clock'; ed.orig = false; ed.draft = null; syncEd(); queueEd(); });
   $('#toolErase').addEventListener('click', function(){ ed.tool = 'erase'; ed.orig = true; ed.draft = null; syncEd(); queueEd(); });
+  $('#toolNotif').addEventListener('click', function(){ ed.tool = 'notif'; ed.orig = false; ed.draft = null; syncEd(); queueEd(); });
   $('#toolBg').addEventListener('click', function(){ ed.tool = 'bg'; ed.orig = false; ed.draft = null; ed.ghost = true; syncEd(); queueEd(); });
   $('#bgGhost').addEventListener('click', function(){ ed.ghost = !ed.ghost; syncEd(); queueEd(); });
   $('#bgReset').addEventListener('click', function(){ S.rawS = 1; S.rawX = 0; S.rawY = 0; save(); syncEd(); queueEd(); });
@@ -769,8 +780,9 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     function ids(){ return Object.keys(ptrs); }
     function rectNow(){ return c.getBoundingClientRect(); }
     function pct(p){ var r = rectNow(); return {x: clamp((p.x - r.left) / r.width * 100, 0, 100), y: clamp((p.y - r.top) / r.height * 100, 0, 100)}; }
-    function getT(){ return ed.tool === 'bg' ? {x: S.rawX, y: S.rawY, s: S.rawS} : {x: S.x, y: S.y, s: S.size}; }
+    function getT(){ return ed.tool === 'notif' ? {x: S.smsX, y: S.smsY, s: S.smsS} : ed.tool === 'bg' ? {x: S.rawX, y: S.rawY, s: S.rawS} : {x: S.x, y: S.y, s: S.size}; }
     function setT(x, y, s){
+      if (ed.tool === 'notif'){ S.smsX = clamp(x, 0, 100); S.smsY = clamp(y, 0, 95); S.smsS = clamp(s, .6, 1.6); return; }
       if (ed.tool === 'bg'){
         var cv = $('#ec'), cw = cv.width, ch = cv.height, sc = clamp(s, 1, 4);
         var k = Math.max(cw / rawImg.width, ch / rawImg.height) * sc;
@@ -868,7 +880,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   }
   function showSms(){
     $('#nFrom').textContent = S.smsFrom || 'Messages'; $('#nText').textContent = S.smsText || '';
-    notif.style.top = S.smsY + '%'; smsOn = true; busy = false;
+    placeNotif(notif, stage.getBoundingClientRect().width); smsOn = true; busy = false;
     notif.classList.add('on'); if (S.smsSound) ding();
     try { navigator.vibrate && navigator.vibrate(200); } catch(e){}
   }
@@ -975,7 +987,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   }, 250);
 
   /* version et mode hors ligne */
-  var VERSION = '12', offlineReady = false;
+  var VERSION = '13', offlineReady = false;
   function buildNote(){ $('#buildNote').textContent = 'Version ' + VERSION + (offlineReady ? ' · prête hors ligne' : ''); }
   buildNote();
   try {
