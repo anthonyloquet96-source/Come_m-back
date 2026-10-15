@@ -178,6 +178,8 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     <p class="lede">Au toucher : le temps recule jusqu'à l'heure réelle, une notification SMS apparaît, ou une carte surgit en fond d'écran.</p>
   </header>
 
+  <p class="note" id="motionAsk" hidden style="border:1px solid var(--brass);border-radius:8px;padding:10px 12px;color:var(--chalk);text-align:left">Capteurs de mouvement : iOS redemande l'autorisation à chaque ouverture de l'app. Appuie sur « Lancer le tour » et choisis « Autoriser » avant ton numéro. Pour ne plus voir cette demande, décoche « La carte bouge… » dans « Carte en fond d'écran ».</p>
+
   <section class="preview" aria-label="Aperçu">
     <div class="phone" id="phone"><canvas id="pv"></canvas></div>
     <p class="live" id="live"></p>
@@ -1020,6 +1022,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     $('#cardLabel').textContent = cardName(S.card);
     var pv = $('#cardPrev'), g = pv.getContext('2d'); g.clearRect(0, 0, pv.width, pv.height); g.drawImage(cardCanvas(S.card), 0, 0, pv.width, pv.height);
     $('#cardFade').value = S.cardFade; $('#cardClock').checked = !!S.cardClock; $('#cardIdx').checked = !!S.cardIdx; $('#placeCard').disabled = !img;
+    $('#motionAsk').hidden = !needMotionPrompt();
     $('#cardMotion').checked = !!S.cardMotion; $('#motionBox').hidden = !S.cardMotion; $('#cardMotionK').value = S.cardMotionK; $('#cardMotionKVal').textContent = S.cardMotionK; $('#cardMotionInv').checked = !!S.cardMotionInv;
     $('#delay2').value = S.delay2; $('#delay2Val').textContent = S.delay2 > 0 ? S.delay2 + ' s' : 'Aucun';
   }
@@ -1125,7 +1128,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   function curAngle(){
     var a = 0;
     try {
-      if (typeof window.orientation === 'number') a = (360 - window.orientation) % 360;
+      if (typeof window.orientation === 'number') a = (window.orientation + 360) % 360;
       else if (window.screen && screen.orientation && typeof screen.orientation.angle === 'number') a = screen.orientation.angle;
     } catch(e){}
     return ((a % 360) + 360) % 360;
@@ -1350,7 +1353,11 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   function resetCard(){ cancelAnimationFrame(cardRaf); cardOn = false; cardA = 0; mo.x = mo.y = mo.vx = mo.vy = mo.r = mo.vr = 0; }
   /* mouvement : la carte réagit aux secousses et à l'inclinaison du téléphone */
   var mo = {x: 0, y: 0, vx: 0, vy: 0, r: 0, vr: 0, tx: 0, ty: 0, on: false, raf: 0, last: 0, ref: null, perm: false, gx: 0, gy: 0};
+  function needMotionPrompt(){
+    return S.effect === 'card' && !!S.cardMotion && typeof window.DeviceMotionEvent !== 'undefined' && typeof window.DeviceMotionEvent.requestPermission === 'function' && !mo.perm;
+  }
   function askMotion(cb){
+    mo.asked = true;
     try {
       var DM = window.DeviceMotionEvent, DO = window.DeviceOrientationEvent;
       if (DM && typeof DM.requestPermission === 'function'){
@@ -1401,7 +1408,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   }
   function startMotion(){
     if (!(S.effect === 'card' && S.cardMotion) || mo.on) return;
-    if (mo.perm) enableMotion(); else askMotion(function(ok){ if (ok && running) enableMotion(); });
+    if (mo.perm) enableMotion(); else if (!mo.asked) askMotion(function(ok){ if (ok && running) enableMotion(); });
   }
   function shown(){ return new Date(Date.now() + offset * 60000); }
   function frame(){
@@ -1532,7 +1539,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     sc.addEventListener('pointerdown', function(e){
       e.preventDefault();
       if (!wl) lock();
-      if (!mo.on) startMotion();
+      if (!mo.on && !mo.asked) startMotion();
       ptrs[e.pointerId] = cy(e); count++;
       if (count >= 2){ multi = true; startY = meanY(); clearTimeout(pend); pend = null; return; }
       pend = setTimeout(function(){ pend = null; if (!multi) rewind(); }, 120);
@@ -1566,7 +1573,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   }, 250);
 
   /* version et mode hors ligne */
-  var VERSION = '24', offlineReady = false;
+  var VERSION = '25', offlineReady = false;
   function buildNote(){ $('#buildNote').textContent = 'Version ' + VERSION + (offlineReady ? ' · prête hors ligne' : ''); }
   buildNote();
   try {
@@ -1585,7 +1592,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     .then(function(u){ if (u) return loadImg(u).then(function(i){ rawImg = i; rawVer++; }); })
     .catch(function(){})
     .then(function(){
-      if (img && S.autostart) enter(); else setup.hidden = false;
+      if (img && S.autostart && !needMotionPrompt()) enter(); else { setup.hidden = false; refreshUI(); }
       refreshUI();
     });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(updatePreview);
