@@ -551,7 +551,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
         ctx.save();
         ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
         if (S.shadow){ ctx.shadowColor = 'rgba(0,0,0,.38)'; ctx.shadowBlur = size * .08; ctx.shadowOffsetY = size * .02; }
-        function paint(txt, fs, wgt, fill){
+        function paint(txt, fs, wgt, fill, prv, q){
           ctx.font = wgt + ' ' + fs + 'px ' + fam;
           var sp = S.spacing / 100 * fs, ws = [], tot = 0, i;
           for (i = 0; i < txt.length; i++){ var w = ctx.measureText(txt[i]).width; ws.push(w); tot += w; }
@@ -562,6 +562,12 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
               ctx.globalAlpha = op * .6; ctx.fillStyle = S.color; ctx.fillText(txt[i], x, 0);
               ctx.globalAlpha = op * .55; ctx.strokeStyle = '#fff'; ctx.lineWidth = Math.max(1, fs * .012); ctx.shadowColor = 'transparent'; ctx.strokeText(txt[i], x, 0);
               if (S.shadow){ ctx.shadowColor = 'rgba(0,0,0,.38)'; }
+            } else if (prv && prv[i] !== txt[i]){
+              var e = q * q * (3 - 2 * q), dy = fs * .42;
+              ctx.textAlign = 'center';
+              ctx.globalAlpha = op * (1 - e); ctx.fillStyle = fill; ctx.fillText(prv[i], x + ws[i] / 2, e * dy);
+              ctx.globalAlpha = op * e; ctx.fillText(txt[i], x + ws[i] / 2, (e - 1) * dy);
+              ctx.textAlign = 'left';
             } else { ctx.globalAlpha = op; ctx.fillStyle = fill; ctx.fillText(txt[i], x, 0); }
             x += ws[i] + sp;
           }
@@ -575,7 +581,13 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
           fill.addColorStop(0, S.color); fill.addColorStop(1, 'rgba(255,255,255,.35)');
         }
         ctx.translate(cx, cy); ctx.scale(wx, 1);
-        paint(tt, size, S.weight, fill);
+        var tp = null;
+        if (o.roll){
+          var ph = o.roll.prev.getHours(); ph = S.h12 ? (ph % 12 || 12) : ph;
+          tp = (S.zero && ph < 10 ? '0' : '') + ph + ':' + pad(o.roll.prev.getMinutes());
+          if (tp.length !== tt.length) tp = null;
+        }
+        paint(tt, size, S.weight, fill, tp, tp ? o.roll.q : 0);
         if (S.showDate){
           var ds = date.toLocaleDateString('fr-FR', S.dateFmt === 'short' ? {weekday:'short', day:'numeric', month:'short'} : {weekday:'long', day:'numeric', month:'long'});
           var dsz = size * clamp(S.dateSize, 8, 40) / 100;
@@ -936,8 +948,15 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   /* ---------- scène ---------- */
   var running = false, busy = false, timer = null, offset = 0, wl = null;
 
-  function shown(){ return new Date(Date.now() + offset * 60000); }
-  function frame(){ if (running) stR.render(shown(), S.debug ? {debug: debugInfo()} : null); }
+  var offF = null, rafId = 0;
+  function curOff(){ return offF === null ? offset : offF; }
+  function shown(){ return new Date(Date.now() + Math.floor(curOff() + 1e-9) * 60000); }
+  function frame(){
+    if (!running) return;
+    var o = S.debug ? {debug: debugInfo()} : {}, c = curOff(), lo = Math.floor(c + 1e-9);
+    if (c - lo > 1e-6) o.roll = {prev: new Date(Date.now() + (lo + 1) * 60000), q: 1 - (c - lo)};
+    stR.render(shown(), o);
+  }
   function fitStage(){ var s = layoutFull(stage); stR.fit(s.w, s.h); frame(); }
   function refit(){ if (running) fitStage(); else if (ed.open) fitEd(); }
   window.addEventListener('orientationchange', function(){ setTimeout(refit, 250); });
@@ -981,19 +1000,19 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   }
   function runRewind(){
     if (busy || offset <= 0) return;
-    if (S.mode === 'step'){ offset--; frame(); return; }
     busy = true;
-    var total = offset, base = S.duration * 1000 / (total * 1.13);
-    (function tick(){
-      if (!running){ busy = false; return; }
-      offset--; frame();
-      if (offset > 0){
-        var p = 1 - offset / total;
-        timer = setTimeout(tick, Math.max(30, base * (.4 + 2.2 * p * p)));
-      } else { busy = false; timer = null; }
-    })();
+    var step = S.mode === 'step', from = offset, to = step ? offset - 1 : 0;
+    var dur = step ? 500 : Math.max(800, S.duration * 1000), t0 = 0;
+    function tick(now){
+      if (!running){ busy = false; offF = null; return; }
+      if (!t0) t0 = now;
+      var t = Math.min(1, (now - t0) / dur), P = step ? 1 - Math.pow(1 - t, 3) : 1 - Math.pow(1 - t, 1.8);
+      if (t >= 1){ offset = to; offF = null; busy = false; rafId = 0; frame(); return; }
+      offF = from + (to - from) * P; frame(); rafId = requestAnimationFrame(tick);
+    }
+    rafId = requestAnimationFrame(tick);
   }
-  function rearm(){ clearTimeout(timer); timer = null; busy = false; hideSms(); offset = startOff(); frame(); }
+  function rearm(){ cancelAnimationFrame(rafId); rafId = 0; offF = null; clearTimeout(timer); timer = null; busy = false; hideSms(); offset = startOff(); frame(); }
 
   function lock(){ try { var p = navigator.wakeLock && navigator.wakeLock.request('screen'); if (p) p.then(function(l){ wl = l; }).catch(function(){}); } catch(e){} }
   function enter(){
@@ -1009,7 +1028,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     } catch(e){}
   }
   function leave(){
-    running = false; busy = false; clearTimeout(timer); timer = null; hideSms();
+    running = false; busy = false; clearTimeout(timer); timer = null; cancelAnimationFrame(rafId); rafId = 0; offF = null; hideSms();
     try { if (wl) wl.release(); } catch(e){} wl = null;
     try { if (document.fullscreenElement) document.exitFullscreen(); } catch(e){}
     setTourClass(false);
@@ -1066,7 +1085,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   }, 250);
 
   /* version et mode hors ligne */
-  var VERSION = '16', offlineReady = false;
+  var VERSION = '17', offlineReady = false;
   function buildNote(){ $('#buildNote').textContent = 'Version ' + VERSION + (offlineReady ? ' · prête hors ligne' : ''); }
   buildNote();
   try {
