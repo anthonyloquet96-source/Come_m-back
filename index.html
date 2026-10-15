@@ -303,8 +303,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     </div>
     <p class="help">Temps d'attente entre ton toucher et le début de l'effet.</p>
     <label class="check"><input id="autostart" type="checkbox">Ouvrir directement en mode tour</label>
-    <label class="check"><input id="lockPortrait" type="checkbox">Garder l'écran en portrait si je tourne le téléphone</label>
-    <p class="help">iOS n'autorise pas une page web à bloquer la rotation : ici, l'image reste droite par rapport au téléphone. Pour un blocage complet, active aussi le verrouillage de l'orientation d'iOS (Centre de contrôle).</p>
+
   </section>
 
   <details class="diag">
@@ -314,6 +313,8 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
       <div class="row"><label for="extra">Étendre le fond vers le bas</label><output id="extraVal"></output><input id="extra" type="range" min="0" max="150" step="1"></div>
       <p class="help">À utiliser si une bande apparaît en bas de l'écran pendant le tour. Augmente jusqu'à ce qu'elle disparaisse.</p>
       <div class="row"><label for="layout">Mode d'affichage du tour</label><output></output>
+        <label class="check" style="grid-column:1/-1"><input id="lockPortrait" type="checkbox">Verrouillage portrait : garder l'écran droit si je tourne le téléphone</label>
+        <p class="help" style="grid-column:1/-1;margin:0">iOS ne permet pas à une page web de bloquer la rotation : ici, l'image reste droite par rapport au téléphone. Pour un blocage complet, active aussi le verrouillage de l'orientation d'iOS (Centre de contrôle).</p>
         <label class="check" style="grid-column:1/-1"><input id="lockInv" type="checkbox">Inverser le sens de la correction en paysage</label>
         <select id="layout" style="grid-column:1/-1;background:var(--felt-2);color:var(--chalk);border:1px solid var(--line);border-radius:6px;font:400 15px var(--f-body);padding:10px;min-height:44px">
           <option value="1">Standard</option>
@@ -1121,16 +1122,17 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   }
   /* verrouillage en portrait « logiciel » : si le téléphone passe en paysage, la scène est tournée pour rester droite par rapport au téléphone */
   var stageRot = 0;
-  function softRot(){
-    if (!S.lockPortrait) return 0;
-    var w = window.innerWidth, h = window.innerHeight;
-    if (w <= h) return 0;
+  function curAngle(){
     var a = 0;
     try {
-      if (window.screen && screen.orientation && typeof screen.orientation.angle === 'number') a = screen.orientation.angle;
-      else if (typeof window.orientation === 'number') a = (360 - window.orientation) % 360;
+      if (typeof window.orientation === 'number') a = (360 - window.orientation) % 360;
+      else if (window.screen && screen.orientation && typeof screen.orientation.angle === 'number') a = screen.orientation.angle;
     } catch(e){}
-    a = ((a % 360) + 360) % 360;
+    return ((a % 360) + 360) % 360;
+  }
+  function softRot(){
+    if (!S.lockPortrait) return 0;
+    var a = curAngle();
     if (a !== 90 && a !== 270) return 0;
     var r = a === 90 ? -90 : 90;
     return S.lockInv ? -r : r;
@@ -1139,7 +1141,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     var s = fullSize(), rot = allowRot ? softRot() : 0;
     if (allowRot) stageRot = rot;
     if (rot){
-      s = {w: window.innerHeight, h: window.innerWidth};
+      s = {w: Math.min(window.innerWidth, window.innerHeight), h: Math.max(window.innerWidth, window.innerHeight)};
       el.style.left = '50%'; el.style.top = '50%'; el.style.transform = 'translate(-50%,-50%) rotate(' + rot + 'deg)';
     } else { el.style.left = ''; el.style.top = ''; el.style.transform = ''; }
     el.style.width = s.w + 'px'; el.style.height = s.h + 'px';
@@ -1411,8 +1413,20 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   }
   function fitStage(){ var s = layoutFull(stage, true); stR.fit(s.w, s.h); frame(); }
   function refit(){ if (running) fitStage(); else if (ed.open) fitEd(); }
-  window.addEventListener('orientationchange', function(){ setTimeout(refit, 250); setTimeout(refit, 700); });
-  if (window.visualViewport) window.visualViewport.addEventListener('resize', refit);
+  var rotT = 0, lastSig = '';
+  function sigNow(){ return window.innerWidth + 'x' + window.innerHeight + '/' + curAngle(); }
+  function onRot(){
+    if (!running){ setTimeout(refit, 250); return; }
+    if (S.lockPortrait) stage.style.visibility = 'hidden';
+    fitStage();
+    clearTimeout(rotT);
+    rotT = setTimeout(function(){ fitStage(); stage.style.visibility = ''; }, 380);
+  }
+  window.addEventListener('orientationchange', onRot);
+  try { if (screen.orientation && screen.orientation.addEventListener) screen.orientation.addEventListener('change', onRot); } catch(e){}
+  try { var mq = window.matchMedia('(orientation: landscape)'); if (mq.addEventListener) mq.addEventListener('change', onRot); } catch(e){}
+  setInterval(function(){ if (!running) return; var g = sigNow(); if (g !== lastSig){ var first = lastSig === ''; lastSig = g; if (!first) onRot(); } }, 120);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', function(){ if (running && S.lockPortrait && stage.style.visibility === 'hidden') return; refit(); });
 
   function startOff(){ return S.effect === 'time' ? S.minutes : 0; }
   var notif = $('#notif'), smsOn = false, actx = null;
@@ -1552,7 +1566,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   }, 250);
 
   /* version et mode hors ligne */
-  var VERSION = '23', offlineReady = false;
+  var VERSION = '24', offlineReady = false;
   function buildNote(){ $('#buildNote').textContent = 'Version ' + VERSION + (offlineReady ? ' · prête hors ligne' : ''); }
   buildNote();
   try {
