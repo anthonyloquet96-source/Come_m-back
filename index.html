@@ -119,7 +119,7 @@ html.tour.tour-abs,html.tour.tour-abs body{overflow:visible}
 html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
 #stage{position:fixed;left:0;top:0;width:100%;height:100%;height:100lvh;background:#000;z-index:10;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;cursor:none}
 #stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
-.zone{position:absolute;top:0;width:28vw;height:14vh;background:transparent;z-index:3}
+.zone{position:absolute;top:0;width:28%;height:14%;background:transparent;z-index:3}
 .solo #toolRow>.btn:not(.solid){display:none}
 #rowStyle{max-height:38vh;overflow:auto;-webkit-overflow-scrolling:touch}
 .srow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px}
@@ -303,6 +303,8 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     </div>
     <p class="help">Temps d'attente entre ton toucher et le début de l'effet.</p>
     <label class="check"><input id="autostart" type="checkbox">Ouvrir directement en mode tour</label>
+    <label class="check"><input id="lockPortrait" type="checkbox">Garder l'écran en portrait si je tourne le téléphone</label>
+    <p class="help">iOS n'autorise pas une page web à bloquer la rotation : ici, l'image reste droite par rapport au téléphone. Pour un blocage complet, active aussi le verrouillage de l'orientation d'iOS (Centre de contrôle).</p>
   </section>
 
   <details class="diag">
@@ -312,6 +314,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
       <div class="row"><label for="extra">Étendre le fond vers le bas</label><output id="extraVal"></output><input id="extra" type="range" min="0" max="150" step="1"></div>
       <p class="help">À utiliser si une bande apparaît en bas de l'écran pendant le tour. Augmente jusqu'à ce qu'elle disparaisse.</p>
       <div class="row"><label for="layout">Mode d'affichage du tour</label><output></output>
+        <label class="check" style="grid-column:1/-1"><input id="lockInv" type="checkbox">Inverser le sens de la correction en paysage</label>
         <select id="layout" style="grid-column:1/-1;background:var(--felt-2);color:var(--chalk);border:1px solid var(--line);border-radius:6px;font:400 15px var(--f-body);padding:10px;min-height:44px">
           <option value="1">Standard</option>
           <option value="2">Page entière</option>
@@ -414,7 +417,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     slab: 'Rockwell,"Roboto Slab","Courier New",serif',
     mono: 'ui-monospace,"SF Mono",Menlo,Consolas,monospace'
   };
-  var DEF = {minutes:10, effect:'time', card:'AS', cardX:50, cardY:50, cardS:88, cardIdx:true, cardClock:true, cardMotion:false, cardMotionK:1, cardMotionInv:false, cardFade:'fade', delay2:0, smsFrom:'Messages', smsText:'le sept de cœur', smsY:60, smsX:50, smsS:1, smsSound:true, mode:'auto', duration:5, delay:0, autostart:true, bgMode:'mask', rawS:1, rawX:0, rawY:0, extra:0, layout:'1', debug:false, x:50, y:22.5, size:28, color:'#ffffff', showDate:true, fill:'mirror', font:'sf', weight:600, width:100, spacing:0, h12:false, zero:true, cstyle:'solid', copacity:100, shadow:false, dateFmt:'long', dateSize:20};
+  var DEF = {minutes:10, effect:'time', card:'AS', cardX:50, cardY:50, cardS:88, cardIdx:true, cardClock:true, lockPortrait:true, lockInv:false, cardMotion:false, cardMotionK:1, cardMotionInv:false, cardFade:'fade', delay2:0, smsFrom:'Messages', smsText:'le sept de cœur', smsY:60, smsX:50, smsS:1, smsSound:true, mode:'auto', duration:5, delay:0, autostart:true, bgMode:'mask', rawS:1, rawX:0, rawY:0, extra:0, layout:'1', debug:false, x:50, y:22.5, size:28, color:'#ffffff', showDate:true, fill:'mirror', font:'sf', weight:600, width:100, spacing:0, h12:false, zero:true, cstyle:'solid', copacity:100, shadow:false, dateFmt:'long', dateSize:20};
   var DEF_ZONES = [{x:0, y:12, w:100, h:17}];
   var KEY = 'marche-arriere-v4';
   var S = Object.assign({}, DEF, {zones: DEF_ZONES.map(function(z){ return Object.assign({}, z); })});
@@ -980,6 +983,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     $('#delay').value = S.delay; $('#delayVal').textContent = S.delay > 0 ? S.delay + ' s' : 'Aucun';
     $('#autostart').checked = !!S.autostart;
     $('#extra').value = S.extra || 0; $('#extraVal').textContent = (S.extra || 0) + ' px';
+    $('#lockPortrait').checked = !!S.lockPortrait; $('#lockInv').checked = !!S.lockInv;
     $('#layout').value = S.layout; $('#debug').checked = !!S.debug;
     try {
       var cs = getComputedStyle($('#probe')), vv = window.visualViewport;
@@ -1042,6 +1046,8 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   $('#placeNotif').addEventListener('click', function(){ openEditor('notif'); });
   $('#smsSound').addEventListener('change', function(e){ S.smsSound = e.target.checked; save(); });
   $('#duration').addEventListener('input', function(e){ S.duration = parseFloat(e.target.value); save(); refreshUI(); });
+  $('#lockPortrait').addEventListener('change', function(e){ S.lockPortrait = e.target.checked; save(); });
+  $('#lockInv').addEventListener('change', function(e){ S.lockInv = e.target.checked; save(); });
   $('#layout').addEventListener('change', function(e){ S.layout = e.target.value; save(); });
   $('#debug').addEventListener('change', function(e){ S.debug = e.target.checked; save(); });
   $('#extra').addEventListener('input', function(e){ S.extra = parseFloat(e.target.value); save(); refreshUI(); });
@@ -1113,8 +1119,29 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     if (standalone && window.screen && w <= h) h = Math.max(h, Math.max(screen.width, screen.height));
     return {w: w, h: h + (S.extra || 0)};
   }
-  function layoutFull(el){
-    var s = fullSize();
+  /* verrouillage en portrait « logiciel » : si le téléphone passe en paysage, la scène est tournée pour rester droite par rapport au téléphone */
+  var stageRot = 0;
+  function softRot(){
+    if (!S.lockPortrait) return 0;
+    var w = window.innerWidth, h = window.innerHeight;
+    if (w <= h) return 0;
+    var a = 0;
+    try {
+      if (window.screen && screen.orientation && typeof screen.orientation.angle === 'number') a = screen.orientation.angle;
+      else if (typeof window.orientation === 'number') a = (360 - window.orientation) % 360;
+    } catch(e){}
+    a = ((a % 360) + 360) % 360;
+    if (a !== 90 && a !== 270) return 0;
+    var r = a === 90 ? -90 : 90;
+    return S.lockInv ? -r : r;
+  }
+  function layoutFull(el, allowRot){
+    var s = fullSize(), rot = allowRot ? softRot() : 0;
+    if (allowRot) stageRot = rot;
+    if (rot){
+      s = {w: window.innerHeight, h: window.innerWidth};
+      el.style.left = '50%'; el.style.top = '50%'; el.style.transform = 'translate(-50%,-50%) rotate(' + rot + 'deg)';
+    } else { el.style.left = ''; el.style.top = ''; el.style.transform = ''; }
     el.style.width = s.w + 'px'; el.style.height = s.h + 'px';
     document.body.style.minHeight = S.layout === '2' ? s.h + 'px' : '';
     return s;
@@ -1382,9 +1409,9 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     if (rollQ < 1) o.roll = {prev: new Date(Date.now() + rollPrev * 60000), q: rollQ};
     stR.render(shown(), o);
   }
-  function fitStage(){ var s = layoutFull(stage); stR.fit(s.w, s.h); frame(); }
+  function fitStage(){ var s = layoutFull(stage, true); stR.fit(s.w, s.h); frame(); }
   function refit(){ if (running) fitStage(); else if (ed.open) fitEd(); }
-  window.addEventListener('orientationchange', function(){ setTimeout(refit, 250); });
+  window.addEventListener('orientationchange', function(){ setTimeout(refit, 250); setTimeout(refit, 700); });
   if (window.visualViewport) window.visualViewport.addEventListener('resize', refit);
 
   function startOff(){ return S.effect === 'time' ? S.minutes : 0; }
@@ -1403,7 +1430,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   }
   function showSms(){
     $('#nFrom').textContent = S.smsFrom || 'Messages'; $('#nText').textContent = S.smsText || '';
-    placeNotif(notif, stage.getBoundingClientRect().width); smsOn = true; busy = false;
+    placeNotif(notif, stage.offsetWidth); smsOn = true; busy = false;
     notif.classList.add('on'); if (S.smsSound) ding();
     try { navigator.vibrate && navigator.vibrate(200); } catch(e){}
   }
@@ -1457,6 +1484,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     setTourClass(true);
     setup.hidden = true; stage.hidden = false; window.scrollTo(0, 0);
     fitStage(); lock(); startMotion();
+    try { if (screen.orientation && screen.orientation.lock) screen.orientation.lock('portrait').catch(function(){}); } catch(e){}
     try {
       if (!navigator.userActivation || navigator.userActivation.isActive){
         var f = document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); if (f && f.catch) f.catch(function(){});
@@ -1467,6 +1495,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     running = false; busy = false; clearTimeout(timer); timer = null; cancelAnimationFrame(rafId); rafId = 0; rollQ = 1; hideSms(); resetCard(); disableMotion();
     try { if (wl) wl.release(); } catch(e){} wl = null;
     try { if (document.fullscreenElement) document.exitFullscreen(); } catch(e){}
+    try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch(e){}
     setTourClass(false);
     stage.hidden = true; setup.hidden = false; refreshUI();
   }
@@ -1484,18 +1513,19 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   /* gestes : un doigt = recul (après 120 ms, pour laisser arriver un 2e doigt), deux doigts vers le bas = réglages */
   (function(){
     var ptrs = {}, count = 0, multi = false, startY = 0, pend = null, sc = $('#sc');
+    function cy(e){ return stageRot === 0 ? e.clientY : (stageRot < 0 ? e.clientX : -e.clientX); }
     function meanY(){ var s = 0, n = 0, k; for (k in ptrs){ s += ptrs[k]; n++; } return n ? s / n : 0; }
     sc.addEventListener('pointerdown', function(e){
       e.preventDefault();
       if (!wl) lock();
       if (!mo.on) startMotion();
-      ptrs[e.pointerId] = e.clientY; count++;
+      ptrs[e.pointerId] = cy(e); count++;
       if (count >= 2){ multi = true; startY = meanY(); clearTimeout(pend); pend = null; return; }
       pend = setTimeout(function(){ pend = null; if (!multi) rewind(); }, 120);
     });
     sc.addEventListener('pointermove', function(e){
       if (!(e.pointerId in ptrs)) return;
-      ptrs[e.pointerId] = e.clientY;
+      ptrs[e.pointerId] = cy(e);
       if (count >= 2 && meanY() - startY > 70){ ptrs = {}; count = 0; multi = false; leave(); }
     });
     function up(e){
@@ -1522,7 +1552,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   }, 250);
 
   /* version et mode hors ligne */
-  var VERSION = '22', offlineReady = false;
+  var VERSION = '23', offlineReady = false;
   function buildNote(){ $('#buildNote').textContent = 'Version ' + VERSION + (offlineReady ? ' · prête hors ligne' : ''); }
   buildNote();
   try {
