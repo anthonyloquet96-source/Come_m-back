@@ -563,7 +563,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
               ctx.globalAlpha = op * .55; ctx.strokeStyle = '#fff'; ctx.lineWidth = Math.max(1, fs * .012); ctx.shadowColor = 'transparent'; ctx.strokeText(txt[i], x, 0);
               if (S.shadow){ ctx.shadowColor = 'rgba(0,0,0,.38)'; }
             } else if (prv && prv[i] !== txt[i]){
-              var e = q * q * (3 - 2 * q), dy = fs * .42;
+              var e = q * q * (3 - 2 * q), dy = 0;
               ctx.textAlign = 'center';
               ctx.globalAlpha = op * (1 - e); ctx.fillStyle = fill; ctx.fillText(prv[i], x + ws[i] / 2, e * dy);
               ctx.globalAlpha = op * e; ctx.fillText(txt[i], x + ws[i] / 2, (e - 1) * dy);
@@ -948,13 +948,12 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   /* ---------- scène ---------- */
   var running = false, busy = false, timer = null, offset = 0, wl = null;
 
-  var offF = null, rafId = 0;
-  function curOff(){ return offF === null ? offset : offF; }
-  function shown(){ return new Date(Date.now() + Math.floor(curOff() + 1e-9) * 60000); }
+  var rafId = 0, rollPrev = 0, rollQ = 1;
+  function shown(){ return new Date(Date.now() + offset * 60000); }
   function frame(){
     if (!running) return;
-    var o = S.debug ? {debug: debugInfo()} : {}, c = curOff(), lo = Math.floor(c + 1e-9);
-    if (c - lo > 1e-6) o.roll = {prev: new Date(Date.now() + (lo + 1) * 60000), q: 1 - (c - lo)};
+    var o = S.debug ? {debug: debugInfo()} : {};
+    if (rollQ < 1) o.roll = {prev: new Date(Date.now() + rollPrev * 60000), q: rollQ};
     stR.render(shown(), o);
   }
   function fitStage(){ var s = layoutFull(stage); stR.fit(s.w, s.h); frame(); }
@@ -1001,18 +1000,25 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   function runRewind(){
     if (busy || offset <= 0) return;
     busy = true;
-    var step = S.mode === 'step', from = offset, to = step ? offset - 1 : 0;
-    var dur = step ? 500 : Math.max(800, S.duration * 1000), t0 = 0;
+    var step = S.mode === 'step', from = offset, to = step ? offset - 1 : 0, n = from - to;
+    var dur = step ? 1 : Math.max(800, S.duration * 1000), fade = 110, t0 = 0, tc = 0;
     function tick(now){
-      if (!running){ busy = false; offF = null; return; }
+      if (!running){ busy = false; return; }
       if (!t0) t0 = now;
-      var t = Math.min(1, (now - t0) / dur), P = step ? 1 - Math.pow(1 - t, 3) : 1 - Math.pow(1 - t, 1.8);
-      if (t >= 1){ offset = to; offF = null; busy = false; rafId = 0; frame(); return; }
-      offF = from + (to - from) * P; frame(); rafId = requestAnimationFrame(tick);
+      var t = Math.min(1, (now - t0) / dur);
+      /* cadence quasi régulière, très légère décélération à la fin */
+      var P = step ? 1 : 1 - Math.pow(1 - t, 1.25);
+      var d = step ? to : Math.ceil(from - n * P - 1e-9);
+      if (d < to) d = to;
+      if (d !== offset){ rollPrev = offset; offset = d; tc = now; rollQ = 0; }
+      if (rollQ < 1) rollQ = Math.min(1, (now - tc) / fade);
+      frame();
+      if (offset > to || rollQ < 1){ rafId = requestAnimationFrame(tick); }
+      else { busy = false; rafId = 0; }
     }
     rafId = requestAnimationFrame(tick);
   }
-  function rearm(){ cancelAnimationFrame(rafId); rafId = 0; offF = null; clearTimeout(timer); timer = null; busy = false; hideSms(); offset = startOff(); frame(); }
+  function rearm(){ cancelAnimationFrame(rafId); rafId = 0; rollQ = 1; clearTimeout(timer); timer = null; busy = false; hideSms(); offset = startOff(); frame(); }
 
   function lock(){ try { var p = navigator.wakeLock && navigator.wakeLock.request('screen'); if (p) p.then(function(l){ wl = l; }).catch(function(){}); } catch(e){} }
   function enter(){
@@ -1028,7 +1034,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     } catch(e){}
   }
   function leave(){
-    running = false; busy = false; clearTimeout(timer); timer = null; cancelAnimationFrame(rafId); rafId = 0; offF = null; hideSms();
+    running = false; busy = false; clearTimeout(timer); timer = null; cancelAnimationFrame(rafId); rafId = 0; rollQ = 1; hideSms();
     try { if (wl) wl.release(); } catch(e){} wl = null;
     try { if (document.fullscreenElement) document.exitFullscreen(); } catch(e){}
     setTourClass(false);
@@ -1085,7 +1091,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   }, 250);
 
   /* version et mode hors ligne */
-  var VERSION = '17', offlineReady = false;
+  var VERSION = '18', offlineReady = false;
   function buildNote(){ $('#buildNote').textContent = 'Version ' + VERSION + (offlineReady ? ' · prête hors ligne' : ''); }
   buildNote();
   try {
