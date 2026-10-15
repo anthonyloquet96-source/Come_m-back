@@ -1001,19 +1001,15 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     if (busy || offset <= 0) return;
     busy = true;
     var step = S.mode === 'step', from = offset, to = step ? offset - 1 : 0, n = from - to;
-    var dur = step ? 1 : Math.max(800, S.duration * 1000), fade = 110, t0 = 0, tc = 0;
+    var dur = step ? 1 : Math.max(500, S.duration * 1000), gap = dur / n, t0 = 0;
     function tick(now){
       if (!running){ busy = false; return; }
       if (!t0) t0 = now;
-      var t = Math.min(1, (now - t0) / dur);
-      /* cadence quasi régulière, très légère décélération à la fin */
-      var P = step ? 1 : 1 - Math.pow(1 - t, 1.25);
-      var d = step ? to : Math.ceil(from - n * P - 1e-9);
-      if (d < to) d = to;
-      if (d !== offset){ rollPrev = offset; offset = d; tc = now; rollQ = 0; }
-      if (rollQ < 1) rollQ = Math.min(1, (now - tc) / fade);
-      frame();
-      if (offset > to || rollQ < 1){ rafId = requestAnimationFrame(tick); }
+      /* intervalle strictement égal entre deux minutes, changement net */
+      var k = step ? n : Math.min(n, Math.floor((now - t0) / gap + 1e-6));
+      var d = from - k;
+      if (d !== offset){ offset = d; frame(); }
+      if (offset > to){ rafId = requestAnimationFrame(tick); }
       else { busy = false; rafId = 0; }
     }
     rafId = requestAnimationFrame(tick);
@@ -1091,7 +1087,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   }, 250);
 
   /* version et mode hors ligne */
-  var VERSION = '18', offlineReady = false;
+  var VERSION = '19', offlineReady = false;
   function buildNote(){ $('#buildNote').textContent = 'Version ' + VERSION + (offlineReady ? ' · prête hors ligne' : ''); }
   buildNote();
   try {
