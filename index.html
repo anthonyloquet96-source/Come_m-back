@@ -120,6 +120,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
 #stage{position:fixed;left:0;top:0;width:100%;height:100%;height:100lvh;background:#000;z-index:10;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;cursor:none}
 #stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .zone{position:absolute;top:0;width:28vw;height:14vh;background:transparent;z-index:3}
+.solo #toolRow>.btn:not(.solid){display:none}
 .txt{width:100%;background:var(--felt-2);color:var(--chalk);border:1px solid var(--line);border-radius:6px;font:400 16px var(--f-body);padding:10px 12px;min-height:44px;margin-top:6px}
 .notif{position:absolute;z-index:2;pointer-events:none;display:flex;gap:.73em;align-items:flex-start;padding:.8em .93em;border-radius:1.47em;font-size:15px;box-sizing:border-box;background:rgba(60,60,64,.62);-webkit-backdrop-filter:blur(26px) saturate(1.6);backdrop-filter:blur(26px) saturate(1.6);color:#fff;font-family:-apple-system,"SF Pro Text","Helvetica Neue",system-ui,sans-serif;opacity:0;transform:translateY(22px) scale(.97);transition:opacity .35s ease,transform .45s cubic-bezier(.2,.9,.3,1.1)}
 #editor .notif{z-index:1}
@@ -280,13 +281,16 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   <div id="enotif" class="notif" aria-hidden="true"><div class="ic"><svg viewBox="0 0 24 24"><path fill="#fff" d="M12 3C6.5 3 2 6.6 2 11c0 2.3 1.2 4.4 3.2 5.8-.2 1.2-.8 2.4-1.7 3.4 1.9-.1 3.6-.8 4.8-1.7 1.1.3 2.4.5 3.7.5 5.5 0 10-3.6 10-8S17.5 3 12 3z"/></svg></div><div class="bd"><div class="tp"><span id="enFrom"></span><small>maintenant</small></div><div class="tx" id="enText"></div></div></div>
   <div class="ebar">
     <p class="hint" id="edHint"></p>
-    <div class="erow">
+    <div class="erow" id="toolRow">
       <button class="btn sm" id="toolClock" type="button" aria-pressed="true">Heure</button>
       <button class="btn sm" id="toolErase" type="button" aria-pressed="false">Effacer</button>
       <button class="btn sm" id="toolBg" type="button" aria-pressed="false" hidden>Photo</button>
-      <button class="btn sm" id="toolNotif" type="button" aria-pressed="false" hidden>Notif</button>
       <span class="grow"></span>
       <button class="btn sm solid" id="edDone" type="button" style="width:auto;min-height:40px;font-size:15px">Terminer</button>
+    </div>
+    <div id="rowNotif" hidden>
+      <div class="erow"><label for="nsize" style="font-size:14px">Taille</label><input id="nsize" type="range" min="0.6" max="1.6" step="0.01"></div>
+      <div class="erow" style="margin-top:6px"><button class="btn sm ghost" id="nReset" type="button">Recentrer</button></div>
     </div>
     <div id="rowClock">
       <div class="erow">
@@ -724,7 +728,8 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   function fitEd(){ var s = layoutFull(editor); edR.fit(s.w, s.h); drawEd(); }
   function syncEd(){
     var erase = ed.tool === 'erase', bgt = ed.tool === 'bg', nt = ed.tool === 'notif', raw = useRaw(), sms = S.effect === 'sms';
-    $('#toolNotif').hidden = !sms; $('#toolNotif').setAttribute('aria-pressed', String(nt));
+    editor.classList.toggle('solo', nt);
+    $('#rowNotif').hidden = !nt; $('#nsize').value = S.smsS;
     $('#toolErase').hidden = raw; $('#toolBg').hidden = !raw;
     $('#toolClock').setAttribute('aria-pressed', String(!erase && !bgt && !nt));
     $('#toolErase').setAttribute('aria-pressed', String(erase));
@@ -732,7 +737,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     $('#rowClock').hidden = erase || bgt || nt; $('#rowErase').hidden = !erase; $('#rowBg').hidden = !bgt;
     $('#bgGhost').setAttribute('aria-pressed', String(ed.ghost)); $('#bgScale').value = S.rawS;
     $('#edHint').textContent = nt
-      ? 'Glisse la notification pour la placer. Pince avec deux doigts pour la redimensionner.'
+      ? 'Glisse la notification avec un doigt pour la placer. Pince avec deux doigts, ou utilise le curseur, pour la redimensionner.'
       : bgt
       ? 'Glisse pour déplacer la photo, pince pour l\'agrandir. Ta capture apparaît en transparence pour caler le cadrage.'
       : erase
@@ -759,7 +764,8 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   $('#edDone').addEventListener('click', closeEditor);
   $('#toolClock').addEventListener('click', function(){ ed.tool = 'clock'; ed.orig = false; ed.draft = null; syncEd(); queueEd(); });
   $('#toolErase').addEventListener('click', function(){ ed.tool = 'erase'; ed.orig = true; ed.draft = null; syncEd(); queueEd(); });
-  $('#toolNotif').addEventListener('click', function(){ ed.tool = 'notif'; ed.orig = false; ed.draft = null; syncEd(); queueEd(); });
+  $('#nsize').addEventListener('input', function(e){ S.smsS = parseFloat(e.target.value); save(); queueEd(); });
+  $('#nReset').addEventListener('click', function(){ S.smsX = 50; S.smsY = 60; S.smsS = 1; save(); syncEd(); queueEd(); });
   $('#toolBg').addEventListener('click', function(){ ed.tool = 'bg'; ed.orig = false; ed.draft = null; ed.ghost = true; syncEd(); queueEd(); });
   $('#bgGhost').addEventListener('click', function(){ ed.ghost = !ed.ghost; syncEd(); queueEd(); });
   $('#bgReset').addEventListener('click', function(){ S.rawS = 1; S.rawX = 0; S.rawY = 0; save(); syncEd(); queueEd(); });
@@ -782,7 +788,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     function pct(p){ var r = rectNow(); return {x: clamp((p.x - r.left) / r.width * 100, 0, 100), y: clamp((p.y - r.top) / r.height * 100, 0, 100)}; }
     function getT(){ return ed.tool === 'notif' ? {x: S.smsX, y: S.smsY, s: S.smsS} : ed.tool === 'bg' ? {x: S.rawX, y: S.rawY, s: S.rawS} : {x: S.x, y: S.y, s: S.size}; }
     function setT(x, y, s){
-      if (ed.tool === 'notif'){ S.smsX = clamp(x, 0, 100); S.smsY = clamp(y, 0, 95); S.smsS = clamp(s, .6, 1.6); return; }
+      if (ed.tool === 'notif'){ S.smsX = clamp(x, 0, 100); S.smsY = clamp(y, 0, 95); S.smsS = clamp(s, .6, 1.6); $('#nsize').value = S.smsS; return; }
       if (ed.tool === 'bg'){
         var cv = $('#ec'), cw = cv.width, ch = cv.height, sc = clamp(s, 1, 4);
         var k = Math.max(cw / rawImg.width, ch / rawImg.height) * sc;
@@ -987,7 +993,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   }, 250);
 
   /* version et mode hors ligne */
-  var VERSION = '13', offlineReady = false;
+  var VERSION = '14', offlineReady = false;
   function buildNote(){ $('#buildNote').textContent = 'Version ' + VERSION + (offlineReady ? ' · prête hors ligne' : ''); }
   buildNote();
   try {
