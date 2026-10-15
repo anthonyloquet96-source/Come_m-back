@@ -1424,15 +1424,17 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   function sigNow(){ return window.innerWidth + 'x' + window.innerHeight + '/' + curAngle(); }
   function onRot(){
     if (!running){ setTimeout(refit, 250); return; }
+    if (S.lockPortrait) stage.style.visibility = 'hidden';
     fitStage();
     clearTimeout(rotT);
-    [40, 120, 260, 500].forEach(function(d){ setTimeout(function(){ if (running) fitStage(); }, d); });
+    [60, 160].forEach(function(d){ setTimeout(function(){ if (running) fitStage(); }, d); });
+    rotT = setTimeout(function(){ if (running) fitStage(); stage.style.visibility = ''; }, 380);
   }
   window.addEventListener('orientationchange', onRot);
   try { if (screen.orientation && screen.orientation.addEventListener) screen.orientation.addEventListener('change', onRot); } catch(e){}
   try { var mq = window.matchMedia('(orientation: landscape)'); if (mq.addEventListener) mq.addEventListener('change', onRot); } catch(e){}
   setInterval(function(){ if (!running) return; var g = sigNow(); if (g !== lastSig){ var first = lastSig === ''; lastSig = g; if (!first) onRot(); } }, 120);
-  if (window.visualViewport) window.visualViewport.addEventListener('resize', refit);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', function(){ if (running && stage.style.visibility === 'hidden') return; refit(); });
 
   function startOff(){ return S.effect === 'time' ? S.minutes : 0; }
   var notif = $('#notif'), smsOn = false, actx = null;
@@ -1572,7 +1574,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   }, 250);
 
   /* version et mode hors ligne */
-  var VERSION = '26', offlineReady = false;
+  var VERSION = '27', offlineReady = false;
   function buildNote(){ $('#buildNote').textContent = 'Version ' + VERSION + (offlineReady ? ' · prête hors ligne' : ''); }
   buildNote();
   try {
