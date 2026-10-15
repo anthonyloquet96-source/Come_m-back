@@ -121,6 +121,14 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
 #stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .zone{position:absolute;top:0;width:28vw;height:14vh;background:transparent;z-index:3}
 .solo #toolRow>.btn:not(.solid){display:none}
+.solo .ebar{top:8px;top:max(8px,env(safe-area-inset-top));bottom:auto;left:8px;right:8px;border:1px solid var(--line);border-radius:14px;padding:8px 10px;display:flex;flex-wrap:nowrap;align-items:center;gap:8px;background:rgba(11,28,22,.92);z-index:5}
+.solo .ebar .hint{display:none}
+.solo #toolRow{order:2;flex:none}
+.solo #toolRow .grow{display:none}
+.solo #rowNotif .btn{padding:0 10px}
+.solo #rowNotif{order:1;flex:1;min-width:0}
+.solo #rowNotif .erow{flex-wrap:nowrap}
+.solo #rowNotif input[type=range]{flex:1;min-width:60px}
 .txt{width:100%;background:var(--felt-2);color:var(--chalk);border:1px solid var(--line);border-radius:6px;font:400 16px var(--f-body);padding:10px 12px;min-height:44px;margin-top:6px}
 .notif{position:absolute;z-index:2;pointer-events:none;display:flex;gap:.73em;align-items:flex-start;padding:.8em .93em;border-radius:1.47em;font-size:15px;box-sizing:border-box;background:rgba(60,60,64,.62);-webkit-backdrop-filter:blur(26px) saturate(1.6);backdrop-filter:blur(26px) saturate(1.6);color:#fff;font-family:-apple-system,"SF Pro Text","Helvetica Neue",system-ui,sans-serif;opacity:0;transform:translateY(22px) scale(.97);transition:opacity .35s ease,transform .45s cubic-bezier(.2,.9,.3,1.1)}
 #editor .notif{z-index:1}
@@ -289,9 +297,8 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
       <button class="btn sm solid" id="edDone" type="button" style="width:auto;min-height:40px;font-size:15px">Terminer</button>
     </div>
     <div id="rowNotif" hidden>
-      <div class="erow"><label for="nsize" style="font-size:14px">Taille</label><input id="nsize" type="range" min="0.6" max="1.6" step="0.01"></div>
-      <div class="erow" style="margin-top:6px"><button class="btn sm ghost" id="nReset" type="button">Recentrer</button></div>
-    </div>
+      <div class="erow"><label for="nsize" style="font-size:14px">Taille</label><input id="nsize" type="range" min="0.6" max="1.6" step="0.01"><button class="btn sm ghost" id="nReset" type="button" style="width:auto;min-height:40px">Centrer</button></div>
+          </div>
     <div id="rowClock">
       <div class="erow">
         <button class="sw" id="swWhite" type="button" aria-label="Blanc" aria-pressed="false" style="background:#fff"></button>
@@ -993,7 +1000,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   }, 250);
 
   /* version et mode hors ligne */
-  var VERSION = '14', offlineReady = false;
+  var VERSION = '15', offlineReady = false;
   function buildNote(){ $('#buildNote').textContent = 'Version ' + VERSION + (offlineReady ? ' · prête hors ligne' : ''); }
   buildNote();
   try {
