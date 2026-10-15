@@ -130,10 +130,11 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
 .solo .ebar .hint{display:none}
 .solo #toolRow{order:2;flex:none}
 .solo #toolRow .grow{display:none}
-.solo #rowNotif .btn{padding:0 10px}
-.solo #rowNotif{order:1;flex:1;min-width:0}
+.solo #rowNotif .btn,.solo #rowCard .btn{padding:0 10px}
+.solo #rowNotif,.solo #rowCard{order:1;flex:1;min-width:0}
 .solo #rowNotif .erow{flex-wrap:nowrap}
-.solo #rowNotif input[type=range]{flex:1;min-width:60px}
+.solo #rowNotif input[type=range],.solo #rowCard input[type=range]{flex:1;min-width:60px}
+#rowCard .erow{flex-wrap:wrap}
 .cardpick{display:flex;gap:14px;align-items:flex-start;margin:12px 0 4px}
 #cardPrev{width:92px;height:auto;border-radius:6px;flex:none;box-shadow:0 2px 10px rgba(0,0,0,.4)}
 #rankChips,#specChips,#suitChips{margin-top:8px}
@@ -242,9 +243,9 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
         <button class="chip" type="button" data-c="BR">Dos rouge</button>
         <button class="chip" type="button" data-c="BB">Dos bleu</button>
       </div>
-      <label class="help" for="cardFit">Affichage de la carte</label>
-      <select id="cardFit" class="txt"><option value="fit">Carte entière, posée sur le fond</option><option value="full">Plein écran (recadrée sur les côtés)</option></select>
-      <div class="row" id="cardSizeRow"><label for="cardSize">Taille</label><output id="cardSizeVal"></output><input id="cardSize" type="range" min="50" max="100" step="1"></div>
+      <button class="btn" id="placeCard" type="button" disabled>Cadrer la carte sur l'écran</button>
+      <p class="help">Ouvre l'aperçu : glisse la carte, pince pour l'agrandir (jusqu'à dépasser l'écran), ou choisis « Entière » / « Plein écran ».</p>
+      <label class="check"><input id="cardIdx" type="checkbox">Garder les index (valeur et couleur) visibles quand la carte dépasse de l'écran</label>
       <label class="help" for="cardFade">Apparition</label>
       <select id="cardFade" class="txt"><option value="fade">Fondu rapide</option><option value="cut">Instantanée</option></select>
       <div class="row"><label for="delay2">Délai avant la disparition</label><output id="delay2Val"></output><input id="delay2" type="range" min="0" max="15" step="0.5"></div>
@@ -335,6 +336,14 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
       <span class="grow"></span>
       <button class="btn sm solid" id="edDone" type="button" style="width:auto;min-height:40px;font-size:15px">Terminer</button>
     </div>
+    <div id="rowCard" hidden>
+      <div class="erow"><label for="csize" style="font-size:14px">Taille</label><input id="csize" type="range" min="30" max="300" step="1"></div>
+      <div class="erow" style="margin-top:6px">
+        <button class="btn sm ghost" id="cFit" type="button">Entière</button>
+        <button class="btn sm ghost" id="cFull" type="button">Plein écran</button>
+        <button class="btn sm ghost" id="cCenter" type="button">Centrer</button>
+      </div>
+    </div>
     <div id="rowNotif" hidden>
       <div class="erow"><label for="nsize" style="font-size:14px">Taille</label><input id="nsize" type="range" min="0.6" max="1.6" step="0.01"><button class="btn sm ghost" id="nReset" type="button" style="width:auto;min-height:40px">Centrer</button></div>
           </div>
@@ -399,7 +408,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     slab: 'Rockwell,"Roboto Slab","Courier New",serif',
     mono: 'ui-monospace,"SF Mono",Menlo,Consolas,monospace'
   };
-  var DEF = {minutes:10, effect:'time', card:'AS', cardFit:'fit', cardSize:88, cardClock:true, cardFade:'fade', delay2:0, smsFrom:'Messages', smsText:'le sept de cœur', smsY:60, smsX:50, smsS:1, smsSound:true, mode:'auto', duration:5, delay:0, autostart:true, bgMode:'mask', rawS:1, rawX:0, rawY:0, extra:0, layout:'1', debug:false, x:50, y:22.5, size:28, color:'#ffffff', showDate:true, fill:'mirror', font:'sf', weight:600, width:100, spacing:0, h12:false, zero:true, cstyle:'solid', copacity:100, shadow:false, dateFmt:'long', dateSize:20};
+  var DEF = {minutes:10, effect:'time', card:'AS', cardX:50, cardY:50, cardS:88, cardIdx:true, cardClock:true, cardFade:'fade', delay2:0, smsFrom:'Messages', smsText:'le sept de cœur', smsY:60, smsX:50, smsS:1, smsSound:true, mode:'auto', duration:5, delay:0, autostart:true, bgMode:'mask', rawS:1, rawX:0, rawY:0, extra:0, layout:'1', debug:false, x:50, y:22.5, size:28, color:'#ffffff', showDate:true, fill:'mirror', font:'sf', weight:600, width:100, spacing:0, h12:false, zero:true, cstyle:'solid', copacity:100, shadow:false, dateFmt:'long', dateSize:20};
   var DEF_ZONES = [{x:0, y:12, w:100, h:17}];
   var KEY = 'marche-arriere-v4';
   var S = Object.assign({}, DEF, {zones: DEF_ZONES.map(function(z){ return Object.assign({}, z); })});
@@ -567,14 +576,26 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     ctx.fillStyle = '#fbfbf7'; cardRound(ctx, 0, 0, CARD_W, CARD_H, 42); ctx.fill();
     ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.2)'; ctx.stroke();
   }
-  function cardIndex(ctx, rank, suit, col){
+  /* un index (valeur + couleur), dessiné à l'échelle sc autour du point (66, 98) de la carte */
+  function idxMark(ctx, id, x, y, sc){
+    ctx.save(); ctx.translate(x, y); ctx.scale(sc, sc);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    if (id === 'JKC' || id === 'JKB'){
+      ctx.fillStyle = id === 'JKB' ? CARD_BLK : CARD_RED; ctx.font = '700 54px Georgia,"Times New Roman",serif';
+      'JOKER'.split('').forEach(function(ch, i){ ctx.fillText(ch, 0, -20 + i * 58); });
+      ctx.font = '700 60px Georgia,serif'; ctx.fillText('★', 0, 302);
+    } else {
+      var suit = id.slice(-1), rank = id.slice(0, -1), col = (suit === 'H' || suit === 'D') ? CARD_RED : CARD_BLK;
+      ctx.fillStyle = col; ctx.font = '700 ' + (rank === '10' ? 92 : 112) + 'px Georgia,"Times New Roman",serif';
+      ctx.fillText(rank, 0, 0); suitShape(ctx, suit, 0, 92, 64, col);
+    }
+    ctx.restore();
+  }
+  function cardIndex(ctx, rank, suit){
     for (var k = 0; k < 2; k++){
       ctx.save();
       if (k){ ctx.translate(CARD_W, CARD_H); ctx.rotate(Math.PI); }
-      ctx.fillStyle = col; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.font = '700 ' + (rank === '10' ? 92 : 112) + 'px Georgia,"Times New Roman",serif';
-      ctx.fillText(rank, 66, 98);
-      suitShape(ctx, suit, 66, 190, 64, col);
+      idxMark(ctx, rank + suit, 66, 98, 1);
       ctx.restore();
     }
   }
@@ -658,10 +679,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     for (var k = 0; k < 2; k++){
       ctx.save();
       if (k){ ctx.translate(CARD_W, CARD_H); ctx.rotate(Math.PI); }
-      ctx.fillStyle = mono ? CARD_BLK : CARD_RED; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.font = '700 54px Georgia,"Times New Roman",serif';
-      'JOKER'.split('').forEach(function(ch, i){ ctx.fillText(ch, 66, 78 + i * 58); });
-      ctx.font = '700 60px Georgia,serif'; ctx.fillText('★', 66, 400);
+      idxMark(ctx, mono ? 'JKB' : 'JKC', 66, 98, 1);
       ctx.restore();
     }
   }
@@ -715,7 +733,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
         var top = 215, span = 620;
         CARD_PIPS[rank].forEach(function(pt){ suitShape(ctx, suit, pt[0], top + pt[1] * span, 136, col, pt[1] > .5); });
       }
-      cardIndex(ctx, rank, suit, col);
+      cardIndex(ctx, rank, suit);
     }
     cardCache[id] = cv; return cv;
   }
@@ -781,16 +799,26 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
       }
       var cardShown = !!(o.card && o.card.a > 0);
       if (cardShown){
-        var cc = cardCanvas(o.card.id);
+        var cc = cardCanvas(o.card.id), kw = cw * clamp(S.cardS, 20, 400) / 100, kh = kw * CARD_H / CARD_W, kk = kw / CARD_W;
+        var kx = S.cardX / 100 * cw - kw / 2, ky = S.cardY / 100 * ch - kh / 2;
         ctx.save(); ctx.globalAlpha = o.card.a;
-        if (S.cardFit === 'full'){
-          var cs = Math.max(cw / CARD_W, ch / CARD_H);
-          ctx.drawImage(cc, (cw - CARD_W * cs) / 2, (ch - CARD_H * cs) / 2, CARD_W * cs, CARD_H * cs);
-        } else {
-          var kw = cw * clamp(S.cardSize, 40, 100) / 100, kh = kw * CARD_H / CARD_W;
-          if (kh > ch * .97){ kh = ch * .97; kw = kh * CARD_W / CARD_H; }
-          ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = cw * .04; ctx.shadowOffsetY = cw * .012;
-          ctx.drawImage(cc, (cw - kw) / 2, (ch - kh) / 2, kw, kh);
+        ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = cw * .04; ctx.shadowOffsetY = cw * .012;
+        ctx.drawImage(cc, kx, ky, kw, kh);
+        ctx.shadowColor = 'transparent';
+        /* index de secours quand un coin de la carte sort de l'écran */
+        var std = !/^(BR|BB|BL)$/.test(o.card.id);
+        if (S.cardIdx && std){
+          var so = Math.min(kk, cw * .00092), vx0 = Math.max(kx, 0), vy0 = Math.max(ky, 0), vx1 = Math.min(kx + kw, cw), vy1 = Math.min(ky + kh, ch);
+          var jk = o.card.id.length === 3, bw = 126 * so, bh = (jk ? 380 : 215) * so;
+          function mark(corner){
+            ctx.save();
+            if (corner){ ctx.translate(vx1, vy1); ctx.rotate(Math.PI); } else ctx.translate(vx0, vy0);
+            ctx.fillStyle = 'rgba(251,251,247,.96)'; cardRound(ctx, 0, 0, bw, bh, 18 * so); ctx.fill();
+            idxMark(ctx, o.card.id, 63 * so, 62 * so, so);
+            ctx.restore();
+          }
+          if (kx < -2 || ky < -2) mark(0);
+          if (kx + kw > cw + 2 || ky + kh > ch + 2) mark(1);
         }
         ctx.restore();
       }
@@ -951,8 +979,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     document.querySelectorAll('#specChips .chip').forEach(function(c){ c.setAttribute('aria-pressed', String(c.dataset.c === S.card)); });
     $('#cardLabel').textContent = cardName(S.card);
     var pv = $('#cardPrev'), g = pv.getContext('2d'); g.clearRect(0, 0, pv.width, pv.height); g.drawImage(cardCanvas(S.card), 0, 0, pv.width, pv.height);
-    $('#cardFit').value = S.cardFit; $('#cardFade').value = S.cardFade; $('#cardClock').checked = !!S.cardClock;
-    $('#cardSize').value = S.cardSize; $('#cardSizeVal').textContent = S.cardSize + ' %'; $('#cardSizeRow').hidden = S.cardFit === 'full';
+    $('#cardFade').value = S.cardFade; $('#cardClock').checked = !!S.cardClock; $('#cardIdx').checked = !!S.cardIdx; $('#placeCard').disabled = !img;
     $('#delay2').value = S.delay2; $('#delay2Val').textContent = S.delay2 > 0 ? S.delay2 + ' s' : 'Aucun';
   }
   function setCard(id){ S.card = id; save(); refreshUI(); }
@@ -960,9 +987,9 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   $('#suitChips').addEventListener('click', function(e){ var c = e.target.closest('.chip'); if (c) setCard((isStd() ? S.card.slice(0, -1) : 'A') + c.dataset.s); });
   $('#rankChips').addEventListener('click', function(e){ var c = e.target.closest('.chip'); if (c) setCard(c.dataset.r + (isStd() ? S.card.slice(-1) : 'S')); });
   $('#specChips').addEventListener('click', function(e){ var c = e.target.closest('.chip'); if (c) setCard(c.dataset.c); });
-  $('#cardFit').addEventListener('change', function(e){ S.cardFit = e.target.value; save(); refreshUI(); });
+  $('#placeCard').addEventListener('click', function(){ openEditor('card'); });
+  $('#cardIdx').addEventListener('change', function(e){ S.cardIdx = e.target.checked; save(); updatePreview(); });
   $('#cardFade').addEventListener('change', function(e){ S.cardFade = e.target.value; save(); });
-  $('#cardSize').addEventListener('input', function(e){ S.cardSize = parseFloat(e.target.value); save(); refreshUI(); });
   $('#delay2').addEventListener('input', function(e){ S.delay2 = parseFloat(e.target.value); save(); refreshUI(); });
   $('#cardClock').addEventListener('change', function(e){ S.cardClock = e.target.checked; save(); updatePreview(); });
   document.querySelectorAll('input[name=effect]').forEach(function(r){
@@ -1030,10 +1057,10 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   function drawEd(){
     raf = 0;
     if (!ed.open) return;
-    var erase = ed.tool === 'erase', bgt = ed.tool === 'bg', nt = ed.tool === 'notif';
+    var erase = ed.tool === 'erase', bgt = ed.tool === 'bg', nt = ed.tool === 'notif', ct = ed.tool === 'card';
     var en = $('#enotif'); en.classList.toggle('on', nt);
     if (nt){ $('#enFrom').textContent = S.smsFrom || 'Messages'; $('#enText').textContent = S.smsText || ''; placeNotif(en, $('#ec').getBoundingClientRect().width); }
-    edR.render(new Date(Date.now() + (S.effect === 'time' ? S.minutes : 0) * 60000), {overlay: erase, draft: ed.draft, orig: ed.orig, hideClock: ed.orig || bgt, ghost: bgt && ed.ghost});
+    edR.render(new Date(Date.now() + (S.effect === 'time' ? S.minutes : 0) * 60000), {overlay: erase, draft: ed.draft, orig: ed.orig, hideClock: ed.orig || bgt, ghost: bgt && ed.ghost, card: ct ? {id: S.card, a: 1} : null});
   }
   function queueEd(){ if (!raf) raf = requestAnimationFrame(drawEd); }
   /* taille plein écran : sur iPhone en mode application, la zone visible peut être plus courte que l'écran */
@@ -1075,21 +1102,23 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   function fitEd(){ var s = layoutFull(editor); edR.fit(s.w, s.h); drawEd(); }
   function syncEd(){
     var erase = ed.tool === 'erase', bgt = ed.tool === 'bg', nt = ed.tool === 'notif', raw = useRaw(), sms = S.effect === 'sms';
-    var st = ed.tool === 'style';
+    var st = ed.tool === 'style', ct = ed.tool === 'card';
     $('#toolStyle').setAttribute('aria-pressed', String(st)); $('#rowStyle').hidden = !st;
     ['font','cstyle','dateFmt'].forEach(function(k){ $('#' + k).value = S[k]; });
     ['weight','width','spacing','copacity','dateSize'].forEach(function(k){ $('#' + k).value = S[k]; });
     ['h12','zero','shadow'].forEach(function(k){ $('#' + k).checked = !!S[k]; });
-    editor.classList.toggle('solo', nt);
-    $('#rowNotif').hidden = !nt; $('#nsize').value = S.smsS;
+    editor.classList.toggle('solo', nt || ct);
+    $('#rowNotif').hidden = !nt; $('#nsize').value = S.smsS; $('#rowCard').hidden = !ct; $('#csize').value = S.cardS;
     $('#toolErase').hidden = raw; $('#toolBg').hidden = !raw;
-    $('#toolClock').setAttribute('aria-pressed', String(!erase && !bgt && !nt && ed.tool !== 'style'));
+    $('#toolClock').setAttribute('aria-pressed', String(!erase && !bgt && !nt && !ct && ed.tool !== 'style'));
     $('#toolErase').setAttribute('aria-pressed', String(erase));
     $('#toolBg').setAttribute('aria-pressed', String(bgt));
-    $('#rowClock').hidden = erase || bgt || nt || ed.tool === 'style'; $('#rowErase').hidden = !erase; $('#rowBg').hidden = !bgt;
+    $('#rowClock').hidden = erase || bgt || nt || ct || ed.tool === 'style'; $('#rowErase').hidden = !erase; $('#rowBg').hidden = !bgt;
     $('#bgGhost').setAttribute('aria-pressed', String(ed.ghost)); $('#bgScale').value = S.rawS;
     $('#edHint').textContent = ed.tool === 'style'
       ? 'Règle la police, l\'épaisseur et la couleur comme sur iOS. Tu peux toujours déplacer l\'heure au doigt.'
+      : ct
+      ? 'Glisse la carte avec un doigt pour la placer. Pince avec deux doigts pour la redimensionner : elle peut dépasser de l\'écran, les index restent visibles.'
       : nt
       ? 'Glisse la notification avec un doigt pour la placer. Pince avec deux doigts, ou utilise le curseur, pour la redimensionner.'
       : bgt
@@ -1105,7 +1134,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   }
   function openEditor(tool){
     if (!img) return;
-    ed.open = true; ed.tool = tool === 'notif' ? 'notif' : 'clock'; ed.orig = false; ed.draft = null;
+    ed.open = true; ed.tool = (tool === 'notif' || tool === 'card') ? tool : 'clock'; ed.orig = false; ed.draft = null;
     setTourClass(true);
     setup.hidden = true; editor.hidden = false; window.scrollTo(0, 0);
     syncEd(); fitEd();
@@ -1122,6 +1151,17 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   ['font','cstyle','dateFmt'].forEach(function(k){ $('#' + k).addEventListener('change', function(e){ S[k] = e.target.value; save(); queueEd(); }); });
   ['weight','width','spacing','copacity','dateSize'].forEach(function(k){ $('#' + k).addEventListener('input', function(e){ S[k] = parseFloat(e.target.value); save(); queueEd(); }); });
   ['h12','zero','shadow'].forEach(function(k){ $('#' + k).addEventListener('change', function(e){ S[k] = e.target.checked; save(); queueEd(); }); });
+  function cardPreset(kind){
+    var cv = $('#ec'), asp = cv.height / cv.width * CARD_W / CARD_H * 100;
+    S.cardX = 50; S.cardY = 50;
+    if (kind === 'fit') S.cardS = Math.min(88, Math.round(asp * .97));
+    else if (kind === 'full') S.cardS = Math.max(100, Math.ceil(asp));
+    save(); syncEd(); queueEd();
+  }
+  $('#csize').addEventListener('input', function(e){ S.cardS = parseFloat(e.target.value); save(); queueEd(); });
+  $('#cFit').addEventListener('click', function(){ cardPreset('fit'); });
+  $('#cFull').addEventListener('click', function(){ cardPreset('full'); });
+  $('#cCenter').addEventListener('click', function(){ S.cardX = 50; S.cardY = 50; save(); syncEd(); queueEd(); });
   $('#nsize').addEventListener('input', function(e){ S.smsS = parseFloat(e.target.value); save(); queueEd(); });
   $('#nReset').addEventListener('click', function(){ S.smsX = 50; S.smsY = 60; S.smsS = 1; save(); syncEd(); queueEd(); });
   $('#toolBg').addEventListener('click', function(){ ed.tool = 'bg'; ed.orig = false; ed.draft = null; ed.ghost = true; syncEd(); queueEd(); });
@@ -1144,8 +1184,9 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     function ids(){ return Object.keys(ptrs); }
     function rectNow(){ return c.getBoundingClientRect(); }
     function pct(p){ var r = rectNow(); return {x: clamp((p.x - r.left) / r.width * 100, 0, 100), y: clamp((p.y - r.top) / r.height * 100, 0, 100)}; }
-    function getT(){ return ed.tool === 'notif' ? {x: S.smsX, y: S.smsY, s: S.smsS} : ed.tool === 'bg' ? {x: S.rawX, y: S.rawY, s: S.rawS} : {x: S.x, y: S.y, s: S.size}; }
+    function getT(){ return ed.tool === 'card' ? {x: S.cardX, y: S.cardY, s: S.cardS} : ed.tool === 'notif' ? {x: S.smsX, y: S.smsY, s: S.smsS} : ed.tool === 'bg' ? {x: S.rawX, y: S.rawY, s: S.rawS} : {x: S.x, y: S.y, s: S.size}; }
     function setT(x, y, s){
+      if (ed.tool === 'card'){ S.cardX = clamp(x, -50, 150); S.cardY = clamp(y, -50, 150); S.cardS = clamp(s, 30, 300); $('#csize').value = S.cardS; return; }
       if (ed.tool === 'notif'){ S.smsX = clamp(x, 0, 100); S.smsY = clamp(y, 0, 95); S.smsS = clamp(s, .6, 1.6); $('#nsize').value = S.smsS; return; }
       if (ed.tool === 'bg'){
         var cv = $('#ec'), cw = cv.width, ch = cv.height, sc = clamp(s, 1, 4);
@@ -1383,7 +1424,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   }, 250);
 
   /* version et mode hors ligne */
-  var VERSION = '20', offlineReady = false;
+  var VERSION = '21', offlineReady = false;
   function buildNote(){ $('#buildNote').textContent = 'Version ' + VERSION + (offlineReady ? ' · prête hors ligne' : ''); }
   buildNote();
   try {
