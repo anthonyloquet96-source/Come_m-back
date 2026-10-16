@@ -853,10 +853,10 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
         var kx = S.cardX / 100 * cw - kw / 2, ky = S.cardY / 100 * ch - kh / 2;
         ctx.save(); ctx.globalAlpha = L.al;
         ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = cw * .04; ctx.shadowOffsetY = cw * .012;
-        var ox = o.card.dx || 0, oy = o.card.dy || 0;
-        ctx.translate(kx + kw / 2 + ox, ky + kh / 2 + oy); if (o.card.rot) ctx.rotate(o.card.rot);
+        var ox = o.card.dx || 0, oy = o.card.dy || 0, fx = o.card.fx || 0, fy = o.card.fy || 0;
+        ctx.translate(kx + kw / 2 + ox + fx, ky + kh / 2 + oy + fy); if (o.card.rot) ctx.rotate(o.card.rot);
         ctx.drawImage(cc, -kw / 2, -kh / 2, kw, kh);
-        ctx.rotate(-(o.card.rot || 0)); ctx.translate(-(kx + kw / 2 + ox), -(ky + kh / 2 + oy));
+        ctx.rotate(-(o.card.rot || 0)); ctx.translate(-(kx + kw / 2 + ox + fx), -(ky + kh / 2 + oy + fy));
         kx += ox; ky += oy;
         ctx.shadowColor = 'transparent';
         /* index de secours quand un coin de la carte sort de l'écran */
@@ -865,7 +865,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
           var so = Math.min(kk, cw * .00092), vx0 = Math.max(kx, 0), vy0 = Math.max(ky, 0), vx1 = Math.min(kx + kw, cw), vy1 = Math.min(ky + kh, ch);
           var jk = L.id.length === 3, bw = 126 * so, bh = (jk ? 380 : 215) * so;
           function mark(corner){
-            ctx.save();
+            ctx.save(); ctx.translate(fx, fy);
             if (corner){ ctx.translate(vx1, vy1); ctx.rotate(Math.PI); } else ctx.translate(vx0, vy0);
             ctx.fillStyle = 'rgba(251,251,247,.96)'; cardRound(ctx, 0, 0, bw, bh, 18 * so); ctx.fill();
             idxMark(ctx, L.id, 63 * so, 62 * so, so);
@@ -1503,7 +1503,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   function frame(){
     if (!running) return;
     var o = S.debug ? {debug: debugInfo()} : {};
-    if (cardA > 0) o.card = {id: cardCur, id2: morphQ > 0 ? S.card2 : null, q: morphQ, a: cardA, dx: mo.x * stR.cw() + flickX, dy: mo.y * stR.cw() + flickY, rot: mo.r};
+    if (cardA > 0) o.card = {id: cardCur, id2: morphQ > 0 ? S.card2 : null, q: morphQ, a: cardA, dx: mo.x * stR.cw(), dy: mo.y * stR.cw(), fx: flickX, fy: flickY, rot: mo.r};
     if (rollQ < 1) o.roll = {prev: new Date(Date.now() + rollPrev * 60000), q: rollQ};
     stR.render(shown(), o);
   }
@@ -1686,7 +1686,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   }, 250);
 
   /* version et mode hors ligne */
-  var VERSION = '30', offlineReady = false;
+  var VERSION = '31', offlineReady = false;
   function buildNote(){ $('#buildNote').textContent = 'Version ' + VERSION + (offlineReady ? ' · prête hors ligne' : ''); }
   buildNote();
   try {
