@@ -857,7 +857,6 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
         ctx.translate(kx + kw / 2 + ox + fx, ky + kh / 2 + oy + fy); if (o.card.rot) ctx.rotate(o.card.rot);
         ctx.drawImage(cc, -kw / 2, -kh / 2, kw, kh);
         ctx.rotate(-(o.card.rot || 0)); ctx.translate(-(kx + kw / 2 + ox + fx), -(ky + kh / 2 + oy + fy));
-        kx += ox; ky += oy;
         ctx.shadowColor = 'transparent';
         /* index de secours quand un coin de la carte sort de l'écran */
         var std = !/^(BR|BB|BL)$/.test(L.id);
@@ -865,7 +864,8 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
           var so = Math.min(kk, cw * .00092), vx0 = Math.max(kx, 0), vy0 = Math.max(ky, 0), vx1 = Math.min(kx + kw, cw), vy1 = Math.min(ky + kh, ch);
           var jk = L.id.length === 3, bw = 126 * so, bh = (jk ? 380 : 215) * so;
           function mark(corner){
-            ctx.save(); ctx.translate(fx, fy);
+            ctx.save();
+            ctx.translate(kx + kw / 2 + ox + fx, ky + kh / 2 + oy + fy); if (o.card.rot) ctx.rotate(o.card.rot); ctx.translate(-(kx + kw / 2), -(ky + kh / 2));
             if (corner){ ctx.translate(vx1, vy1); ctx.rotate(Math.PI); } else ctx.translate(vx0, vy0);
             ctx.fillStyle = 'rgba(251,251,247,.96)'; cardRound(ctx, 0, 0, bw, bh, 18 * so); ctx.fill();
             idxMark(ctx, L.id, 63 * so, 62 * so, so);
@@ -1401,6 +1401,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   function dragBegin(){
     if (!flickable()) return false;
     busy = true; cancelAnimationFrame(cardRaf); cancelAnimationFrame(morphRaf); cancelAnimationFrame(flickRaf);
+    if (morphQ > 0){ cardCur = S.card2; morphQ = 0; }
     return true;
   }
   function dragMove(dx, dy){ flickX = dx * stK; flickY = dy * stK; frame(); }
@@ -1631,6 +1632,11 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
       e.preventDefault();
       if (!wl) lock();
       if (!mo.on) startMotion(false);
+      if (e.isPrimary && count > 0){
+        /* le navigateur n'a plus aucun doigt actif : on oublie l'état resté coincé */
+        ptrs = {}; count = 0; multi = false; clearTimeout(pend); pend = null;
+        if (fl.drag){ fl.drag = false; cancelAnimationFrame(flickRaf); flickX = 0; flickY = 0; busy = false; frame(); }
+      }
       ptrs[e.pointerId] = cy(e); count++;
       if (count >= 2){ multi = true; startY = meanY(); clearTimeout(pend); pend = null; if (fl.drag){ fl.drag = false; dragRelease(0, 0); } return; }
       fl = {x: cx(e), y: cy(e), t: performance.now(), moved: false, drag: false, s: [], defer: flickable()};
@@ -1686,7 +1692,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   }, 250);
 
   /* version et mode hors ligne */
-  var VERSION = '31', offlineReady = false;
+  var VERSION = '32', offlineReady = false;
   function buildNote(){ $('#buildNote').textContent = 'Version ' + VERSION + (offlineReady ? ' · prête hors ligne' : ''); }
   buildNote();
   try {
