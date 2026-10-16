@@ -640,15 +640,15 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   function suitShape(ctx, s, cx, cy, sz, color, flip){
     ctx.save(); ctx.translate(cx, cy); ctx.scale(sz / 100, (flip ? -1 : 1) * sz / 100); ctx.fillStyle = color; ctx.beginPath();
     if (s === 'H'){
-      ctx.moveTo(0, 46); ctx.bezierCurveTo(-8, 36, -50, 12, -50, -14); ctx.bezierCurveTo(-50, -38, -22, -48, 0, -24);
-      ctx.bezierCurveTo(22, -48, 50, -38, 50, -14); ctx.bezierCurveTo(50, 12, 8, 36, 0, 46);
+      ctx.moveTo(0, 48); ctx.bezierCurveTo(-6, 40, -46, 16, -46, -14); ctx.bezierCurveTo(-46, -38, -20, -48, 0, -26);
+      ctx.bezierCurveTo(20, -48, 46, -38, 46, -14); ctx.bezierCurveTo(46, 16, 6, 40, 0, 48);
     } else if (s === 'D'){
-      ctx.moveTo(0, -52); ctx.quadraticCurveTo(10, -18, 38, 0); ctx.quadraticCurveTo(10, 18, 0, 52);
-      ctx.quadraticCurveTo(-10, 18, -38, 0); ctx.quadraticCurveTo(-10, -18, 0, -52);
+      ctx.moveTo(0, -52); ctx.quadraticCurveTo(12, -20, 44, 0); ctx.quadraticCurveTo(12, 20, 0, 52);
+      ctx.quadraticCurveTo(-12, 20, -44, 0); ctx.quadraticCurveTo(-12, -20, 0, -52);
     } else if (s === 'S'){
-      ctx.moveTo(0, -50); ctx.bezierCurveTo(8, -30, 50, -8, 50, 16); ctx.bezierCurveTo(50, 40, 16, 40, 5, 22);
-      ctx.quadraticCurveTo(6, 40, 14, 50); ctx.lineTo(-14, 50); ctx.quadraticCurveTo(-6, 40, -5, 22);
-      ctx.bezierCurveTo(-16, 40, -50, 40, -50, 16); ctx.bezierCurveTo(-50, -8, -8, -30, 0, -50);
+      ctx.moveTo(0, -52); ctx.bezierCurveTo(6, -30, 46, -10, 46, 14); ctx.bezierCurveTo(46, 38, 16, 38, 5, 20);
+      ctx.quadraticCurveTo(6, 40, 14, 52); ctx.lineTo(-14, 52); ctx.quadraticCurveTo(-6, 40, -5, 20);
+      ctx.bezierCurveTo(-16, 38, -46, 38, -46, 14); ctx.bezierCurveTo(-46, -10, -6, -30, 0, -52);
     } else {
       ctx.arc(0, -25, 24, 0, 7); ctx.moveTo(-2, 0); ctx.arc(-25, 13, 24, 0, 7); ctx.moveTo(48, 13); ctx.arc(25, 13, 24, 0, 7);
       ctx.moveTo(-5, 4); ctx.lineTo(5, 4); ctx.quadraticCurveTo(5, 36, 17, 50); ctx.lineTo(-17, 50); ctx.quadraticCurveTo(-5, 36, -5, 4);
@@ -667,7 +667,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     return o;
   })();
   function cardFace(ctx){
-    ctx.fillStyle = '#fbfbf7'; cardRound(ctx, 0, 0, CARD_W, CARD_H, 42); ctx.fill();
+    ctx.fillStyle = '#fdfdfb'; cardRound(ctx, 0, 0, CARD_W, CARD_H, 40); ctx.fill();
     ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.2)'; ctx.stroke();
   }
   /* un index (valeur + couleur), dessiné à l'échelle sc autour du point (66, 98) de la carte */
@@ -680,8 +680,9 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
       ctx.font = '700 60px Georgia,serif'; ctx.fillText('★', 0, 302);
     } else {
       var suit = id.slice(-1), rank = id.slice(0, -1), col = (suit === 'H' || suit === 'D') ? CARD_RED : CARD_BLK;
-      ctx.fillStyle = col; ctx.font = '700 ' + (rank === '10' ? 92 : 112) + 'px Georgia,"Times New Roman",serif';
-      ctx.fillText(rank, 0, 0); suitShape(ctx, suit, 0, 92, 64, col);
+      ctx.fillStyle = col; ctx.font = '700 150px "Bodoni 72","Didot","Bodoni MT","Playfair Display",Georgia,"Times New Roman",serif';
+      ctx.save(); ctx.scale(rank === '10' ? .56 : .68, 1); ctx.fillText(rank, 0, 0); ctx.restore();
+      suitShape(ctx, suit, 0, 90, 72, col);
     }
     ctx.restore();
   }
@@ -689,7 +690,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     for (var k = 0; k < 2; k++){
       ctx.save();
       if (k){ ctx.translate(CARD_W, CARD_H); ctx.rotate(Math.PI); }
-      idxMark(ctx, rank + suit, 66, 98, 1);
+      idxMark(ctx, rank + suit, 66, 112, 1);
       ctx.restore();
     }
   }
@@ -778,7 +779,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     }
   }
   function cardBack(ctx, base, dark){
-    ctx.fillStyle = '#fbfbf7'; cardRound(ctx, 0, 0, CARD_W, CARD_H, 42); ctx.fill();
+    ctx.fillStyle = '#fdfdfb'; cardRound(ctx, 0, 0, CARD_W, CARD_H, 40); ctx.fill();
     ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.2)'; ctx.stroke();
     var m = 40, iw = CARD_W - 2 * m, ih = CARD_H - 2 * m;
     ctx.save(); cardRound(ctx, m, m, iw, ih, 14); ctx.fillStyle = base; ctx.fill(); ctx.clip();
@@ -844,13 +845,13 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
       cardFace(ctx);
       ctx.imageSmoothingQuality = 'high';
       if (rank === 'J' || rank === 'Q' || rank === 'K'){
-        if (CARD_ART[id]) ctx.drawImage(CARD_ART[id], 150, 150, 450, 750); else cardCourt(ctx, rank, suit);
+        if (CARD_ART[id]) ctx.drawImage(CARD_ART[id], 125, 108, 500, 834); else cardCourt(ctx, rank, suit);
       }
       else if (id === 'AS' && CARD_ART.AS){ var ah = 640, aw = ah * CARD_ART.AS.width / CARD_ART.AS.height; ctx.drawImage(CARD_ART.AS, 375 - aw / 2, 530 - ah / 2, aw, ah); }
-      else if (rank === 'A') suitShape(ctx, suit, 375, 525, 340, col);
+      else if (rank === 'A') suitShape(ctx, suit, 375, 525, 380, col);
       else {
-        var top = 215, span = 620;
-        CARD_PIPS[rank].forEach(function(pt){ suitShape(ctx, suit, pt[0], top + pt[1] * span, 136, col, pt[1] > .5); });
+        var top = 205, span = 640;
+        CARD_PIPS[rank].forEach(function(pt){ suitShape(ctx, suit, pt[0], top + pt[1] * span, 168, col, pt[1] > .5); });
       }
       cardIndex(ctx, rank, suit);
     }
@@ -1763,7 +1764,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   }, 250);
 
   /* version et mode hors ligne */
-  var VERSION = '33', offlineReady = false;
+  var VERSION = '34', offlineReady = false;
   function buildNote(){ $('#buildNote').textContent = 'Version ' + VERSION + (offlineReady ? ' · prête hors ligne' : ''); }
   buildNote();
   try {
