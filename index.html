@@ -225,6 +225,15 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
       <label><input type="radio" name="effect" value="card"><span><strong>Carte en fond d'écran</strong><small>Première touche : la carte apparaît. Seconde : elle disparaît.</small></span></label>
     </div>
     <div id="cardBox" hidden>
+      <label class="check"><input id="cardMorph" type="checkbox">Morph : une secousse change la carte pour une autre</label>
+      <div id="morphBox" hidden>
+        <div class="chips" id="slotChips">
+          <button class="chip" type="button" data-slot="1">Carte de départ</button>
+          <button class="chip" type="button" data-slot="2">Carte après secousse</button>
+        </div>
+        <div class="row"><label for="morphK">Sensibilité de la secousse</label><output id="morphKVal"></output><input id="morphK" type="range" min="0.5" max="2.5" step="0.1"></div>
+        <p class="help" id="morphMsg">Secoue le téléphone quand la carte est affichée : elle change pour l'autre carte. Elle revient à la carte de départ à la prochaine apparition.</p>
+      </div>
       <div class="cardpick">
         <canvas id="cardPrev" width="210" height="294"></canvas>
         <div style="flex:1;min-width:0">
@@ -420,7 +429,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     slab: 'Rockwell,"Roboto Slab","Courier New",serif',
     mono: 'ui-monospace,"SF Mono",Menlo,Consolas,monospace'
   };
-  var DEF = {minutes:10, effect:'time', card:'AS', cardX:50, cardY:50, cardS:88, cardIdx:true, cardClock:true, lockPortrait:true, lockInv:false, cardMotion:false, cardMotionK:1, cardMotionInv:false, cardFade:'fade', delay2:0, smsFrom:'Messages', smsText:'le sept de cœur', smsY:60, smsX:50, smsS:1, smsSound:true, mode:'auto', duration:5, delay:0, autostart:true, bgMode:'mask', rawS:1, rawX:0, rawY:0, extra:0, layout:'1', debug:false, x:50, y:22.5, size:28, color:'#ffffff', showDate:true, fill:'mirror', font:'sf', weight:600, width:100, spacing:0, h12:false, zero:true, cstyle:'solid', copacity:100, shadow:false, dateFmt:'long', dateSize:20};
+  var DEF = {minutes:10, effect:'time', card:'AS', cardX:50, cardY:50, cardS:88, cardIdx:true, cardClock:true, lockPortrait:true, lockInv:false, cardMotion:false, cardMotionK:1, cardMorph:false, card2:'7H', morphK:1, cardMotionInv:false, cardFade:'fade', delay2:0, smsFrom:'Messages', smsText:'le sept de cœur', smsY:60, smsX:50, smsS:1, smsSound:true, mode:'auto', duration:5, delay:0, autostart:true, bgMode:'mask', rawS:1, rawX:0, rawY:0, extra:0, layout:'1', debug:false, x:50, y:22.5, size:28, color:'#ffffff', showDate:true, fill:'mirror', font:'sf', weight:600, width:100, spacing:0, h12:false, zero:true, cstyle:'solid', copacity:100, shadow:false, dateFmt:'long', dateSize:20};
   var DEF_ZONES = [{x:0, y:12, w:100, h:17}];
   var KEY = 'marche-arriere-v4';
   var S = Object.assign({}, DEF, {zones: DEF_ZONES.map(function(z){ return Object.assign({}, z); })});
@@ -836,9 +845,12 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
       }
       var cardShown = !!(o.card && o.card.a > 0);
       if (cardShown){
-        var cc = cardCanvas(o.card.id), kw = cw * clamp(S.cardS, 20, 400) / 100, kh = kw * CARD_H / CARD_W, kk = kw / CARD_W;
+        var layers = [{id: o.card.id, al: o.card.a}];
+        if (o.card.id2 && o.card.q > 0) layers.push({id: o.card.id2, al: o.card.a * o.card.q});
+        layers.forEach(function(L){
+        var cc = cardCanvas(L.id), kw = cw * clamp(S.cardS, 20, 400) / 100, kh = kw * CARD_H / CARD_W, kk = kw / CARD_W;
         var kx = S.cardX / 100 * cw - kw / 2, ky = S.cardY / 100 * ch - kh / 2;
-        ctx.save(); ctx.globalAlpha = o.card.a;
+        ctx.save(); ctx.globalAlpha = L.al;
         ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = cw * .04; ctx.shadowOffsetY = cw * .012;
         var ox = o.card.dx || 0, oy = o.card.dy || 0;
         ctx.translate(kx + kw / 2 + ox, ky + kh / 2 + oy); if (o.card.rot) ctx.rotate(o.card.rot);
@@ -847,21 +859,22 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
         kx += ox; ky += oy;
         ctx.shadowColor = 'transparent';
         /* index de secours quand un coin de la carte sort de l'écran */
-        var std = !/^(BR|BB|BL)$/.test(o.card.id);
+        var std = !/^(BR|BB|BL)$/.test(L.id);
         if (S.cardIdx && std){
           var so = Math.min(kk, cw * .00092), vx0 = Math.max(kx, 0), vy0 = Math.max(ky, 0), vx1 = Math.min(kx + kw, cw), vy1 = Math.min(ky + kh, ch);
-          var jk = o.card.id.length === 3, bw = 126 * so, bh = (jk ? 380 : 215) * so;
+          var jk = L.id.length === 3, bw = 126 * so, bh = (jk ? 380 : 215) * so;
           function mark(corner){
             ctx.save();
             if (corner){ ctx.translate(vx1, vy1); ctx.rotate(Math.PI); } else ctx.translate(vx0, vy0);
             ctx.fillStyle = 'rgba(251,251,247,.96)'; cardRound(ctx, 0, 0, bw, bh, 18 * so); ctx.fill();
-            idxMark(ctx, o.card.id, 63 * so, 62 * so, so);
+            idxMark(ctx, L.id, 63 * so, 62 * so, so);
             ctx.restore();
           }
           if (kx < -2 || ky < -2) mark(0);
           if (kx + kw > cw + 2 || ky + kh > ch + 2) mark(1);
         }
         ctx.restore();
+        });
       }
       if (!o.hideClock && !(cardShown && !S.cardClock)){
         var size = S.size / 100 * cw, cx = S.x / 100 * cw, cy = S.y / 100 * ch;
@@ -947,7 +960,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     ph.style.aspectRatio = String(a);
     var r = ph.getBoundingClientRect();
     pvR.fit(r.width, r.height);
-    pvR.render(new Date(Date.now() + (S.effect === 'time' ? S.minutes : 0) * 60000), S.effect === 'card' ? {card: {id: S.card, a: 1}} : null);
+    pvR.render(new Date(Date.now() + (S.effect === 'time' ? S.minutes : 0) * 60000), S.effect === 'card' ? {card: {id: pc(), a: 1}} : null);
     var now = new Date();
     if (S.effect !== 'time') $('#live').innerHTML = 'Il est <b>' + hm(now) + '</b> · l\'écran garde l\'heure réelle'; else
     $('#live').innerHTML = 'Il est <b>' + hm(now) + '</b> · l\'écran affichera <b>' + hm(new Date(now.getTime() + S.minutes * 60000)) + '</b>';
@@ -1014,23 +1027,34 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   document.querySelectorAll('input[name=mode]').forEach(function(r){
     r.addEventListener('change', function(){ if (r.checked){ S.mode = r.value; save(); refreshUI(); } });
   });
+  var pickSlot = 1;
+  function pc(){ return S.cardMorph && pickSlot === 2 ? S.card2 : S.card; }
   function syncCard(){
-    var std = !/^(BR|BB|BL|JKC|JKB)$/.test(S.card), cs = std ? S.card.slice(-1) : '', cr = std ? S.card.slice(0, -1) : '';
+    if (!S.cardMorph) pickSlot = 1;
+    $('#morphBox').hidden = !S.cardMorph; $('#cardMorph').checked = !!S.cardMorph; $('#morphK').value = S.morphK; $('#morphKVal').textContent = S.morphK;
+    document.querySelectorAll('#slotChips .chip').forEach(function(c){ c.setAttribute('aria-pressed', String(+c.dataset.slot === pickSlot)); });
+    var std = !/^(BR|BB|BL|JKC|JKB)$/.test(pc()), cs = std ? pc().slice(-1) : '', cr = std ? pc().slice(0, -1) : '';
     document.querySelectorAll('#suitChips .chip').forEach(function(c){ c.setAttribute('aria-pressed', String(c.dataset.s === cs)); });
     document.querySelectorAll('#rankChips .chip').forEach(function(c){ c.setAttribute('aria-pressed', String(c.dataset.r === cr)); });
-    document.querySelectorAll('#specChips .chip').forEach(function(c){ c.setAttribute('aria-pressed', String(c.dataset.c === S.card)); });
-    $('#cardLabel').textContent = cardName(S.card);
-    var pv = $('#cardPrev'), g = pv.getContext('2d'); g.clearRect(0, 0, pv.width, pv.height); g.drawImage(cardCanvas(S.card), 0, 0, pv.width, pv.height);
+    document.querySelectorAll('#specChips .chip').forEach(function(c){ c.setAttribute('aria-pressed', String(c.dataset.c === pc())); });
+    $('#cardLabel').textContent = cardName(pc());
+    var pv = $('#cardPrev'), g = pv.getContext('2d'); g.clearRect(0, 0, pv.width, pv.height); g.drawImage(cardCanvas(pc()), 0, 0, pv.width, pv.height);
     $('#cardFade').value = S.cardFade; $('#cardClock').checked = !!S.cardClock; $('#cardIdx').checked = !!S.cardIdx; $('#placeCard').disabled = !img;
     $('#motionAsk').hidden = !needMotionPrompt();
     $('#cardMotion').checked = !!S.cardMotion; $('#motionBox').hidden = !S.cardMotion; $('#cardMotionK').value = S.cardMotionK; $('#cardMotionKVal').textContent = S.cardMotionK; $('#cardMotionInv').checked = !!S.cardMotionInv;
     $('#delay2').value = S.delay2; $('#delay2Val').textContent = S.delay2 > 0 ? S.delay2 + ' s' : 'Aucun';
   }
-  function setCard(id){ S.card = id; save(); refreshUI(); }
-  function isStd(){ return !/^(BR|BB|BL|JKC|JKB)$/.test(S.card); }
-  $('#suitChips').addEventListener('click', function(e){ var c = e.target.closest('.chip'); if (c) setCard((isStd() ? S.card.slice(0, -1) : 'A') + c.dataset.s); });
-  $('#rankChips').addEventListener('click', function(e){ var c = e.target.closest('.chip'); if (c) setCard(c.dataset.r + (isStd() ? S.card.slice(-1) : 'S')); });
+  function setCard(id){ if (S.cardMorph && pickSlot === 2) S.card2 = id; else S.card = id; save(); refreshUI(); }
+  function isStd(){ return !/^(BR|BB|BL|JKC|JKB)$/.test(pc()); }
+  $('#suitChips').addEventListener('click', function(e){ var c = e.target.closest('.chip'); if (c) setCard((isStd() ? pc().slice(0, -1) : 'A') + c.dataset.s); });
+  $('#rankChips').addEventListener('click', function(e){ var c = e.target.closest('.chip'); if (c) setCard(c.dataset.r + (isStd() ? pc().slice(-1) : 'S')); });
   $('#specChips').addEventListener('click', function(e){ var c = e.target.closest('.chip'); if (c) setCard(c.dataset.c); });
+  $('#slotChips').addEventListener('click', function(e){ var c = e.target.closest('.chip'); if (c){ pickSlot = +c.dataset.slot; refreshUI(); } });
+  $('#morphK').addEventListener('input', function(e){ S.morphK = parseFloat(e.target.value); save(); refreshUI(); });
+  $('#cardMorph').addEventListener('change', function(e){
+    S.cardMorph = e.target.checked; if (!S.cardMorph) pickSlot = 1; save(); refreshUI(); updatePreview();
+    if (S.cardMorph) askMotion(function(ok){ $('#morphMsg').textContent = ok ? 'Capteurs de mouvement autorisés. Lance le tour, touche pour afficher la carte, puis secoue.' : 'Autorisation refusée ou indisponible : la secousse ne fonctionnera pas. Dans les réglages iOS de Safari, autorise « Mouvement et orientation ».'; });
+  });
   $('#cardMotion').addEventListener('change', function(e){
     S.cardMotion = e.target.checked; save(); refreshUI();
     if (S.cardMotion) askMotion(function(ok){ $('#motionMsg').textContent = ok ? 'Capteurs de mouvement autorisés. Teste en lançant le tour, carte affichée.' : 'Autorisation refusée ou indisponible : le mouvement ne fonctionnera pas. Dans les réglages iOS de Safari, autorise « Mouvement et orientation ».'; });
@@ -1336,7 +1360,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   /* ---------- scène ---------- */
   var running = false, busy = false, timer = null, offset = 0, wl = null;
 
-  var rafId = 0, rollPrev = 0, rollQ = 1, cardOn = false, cardA = 0, cardRaf = 0;
+  var rafId = 0, rollPrev = 0, rollQ = 1, cardOn = false, cardA = 0, cardRaf = 0, cardCur = 'AS', morphQ = 0, morphRaf = 0, morphAt = 0;
   function animCard(to, done){
     cancelAnimationFrame(cardRaf);
     var from = cardA, dur = S.cardFade === 'fade' ? 450 : 0, t0 = 0;
@@ -1350,11 +1374,12 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     }
     cardRaf = requestAnimationFrame(tick);
   }
-  function resetCard(){ cancelAnimationFrame(cardRaf); cardOn = false; cardA = 0; mo.x = mo.y = mo.vx = mo.vy = mo.r = mo.vr = 0; }
+  function resetCard(){ cancelAnimationFrame(cardRaf); cancelAnimationFrame(morphRaf); cardCur = S.card; morphQ = 0; cardOn = false; cardA = 0; mo.x = mo.y = mo.vx = mo.vy = mo.r = mo.vr = 0; }
   /* mouvement : la carte réagit aux secousses et à l'inclinaison du téléphone */
-  var mo = {x: 0, y: 0, vx: 0, vy: 0, r: 0, vr: 0, tx: 0, ty: 0, on: false, raf: 0, last: 0, ref: null, perm: false, gx: 0, gy: 0};
+  var mo = {x: 0, y: 0, vx: 0, vy: 0, r: 0, vr: 0, tx: 0, ty: 0, on: false, raf: 0, last: 0, ref: null, perm: false, gx: 0, gy: 0, gz: 0};
+  function motionWanted(){ return S.effect === 'card' && (!!S.cardMotion || !!S.cardMorph); }
   function needMotionPrompt(){
-    return S.effect === 'card' && !!S.cardMotion && typeof window.DeviceMotionEvent !== 'undefined' && typeof window.DeviceMotionEvent.requestPermission === 'function' && !mo.perm;
+    return motionWanted() && typeof window.DeviceMotionEvent !== 'undefined' && typeof window.DeviceMotionEvent.requestPermission === 'function' && !mo.perm;
   }
   function askMotion(cb){
     mo.asked = true;
@@ -1368,6 +1393,20 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
         }).catch(function(){ cb && cb(false); });
       } else { mo.perm = !!DM; cb && cb(!!DM); }
     } catch(err){ cb && cb(false); }
+  }
+  function doMorph(){
+    if (!S.cardMorph || !cardOn || cardA < .9 || cardCur === S.card2 || morphQ > 0) return;
+    var t0 = 0, dur = S.cardFade === 'fade' ? 220 : 0;
+    try { navigator.vibrate && navigator.vibrate(30); } catch(e){}
+    if (!dur){ cardCur = S.card2; frame(); return; }
+    function tick(now){
+      if (!running) return;
+      if (!t0) t0 = now;
+      morphQ = Math.min(1, (now - t0) / dur);
+      if (morphQ >= 1){ cardCur = S.card2; morphQ = 0; frame(); return; }
+      frame(); morphRaf = requestAnimationFrame(tick);
+    }
+    morphQ = .001; morphRaf = requestAnimationFrame(tick);
   }
   function moKick(){ if (!mo.raf) mo.raf = requestAnimationFrame(moLoop); }
   function moLoop(t){
@@ -1385,15 +1424,20 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   }
   function onDM(e){
     if (cardA <= 0) return;
-    var K = S.cardMotionK, sg = S.cardMotionInv ? -1 : 1, ax = 0, ay = 0, a = e.acceleration, g = e.accelerationIncludingGravity;
-    if (a && a.x != null){ ax = a.x; ay = a.y; }
-    else if (g && g.x != null){ mo.gx = mo.gx * .9 + g.x * .1; mo.gy = mo.gy * .9 + g.y * .1; ax = g.x - mo.gx; ay = g.y - mo.gy; }
+    var K = S.cardMotionK, sg = S.cardMotionInv ? -1 : 1, ax = 0, ay = 0, az = 0, a = e.acceleration, g = e.accelerationIncludingGravity;
+    if (a && a.x != null){ ax = a.x; ay = a.y; az = a.z || 0; }
+    else if (g && g.x != null){ mo.gx = mo.gx * .9 + g.x * .1; mo.gy = mo.gy * .9 + g.y * .1; mo.gz = mo.gz * .9 + (g.z || 0) * .1; ax = g.x - mo.gx; ay = g.y - mo.gy; az = (g.z || 0) - mo.gz; }
+    if (S.cardMorph){
+      var mag = Math.sqrt(ax * ax + ay * ay + az * az), now = Date.now();
+      if (mag > 13 / clamp(S.morphK, .3, 3) && now - morphAt > 700){ morphAt = now; doMorph(); }
+    }
+    if (!S.cardMotion) return;
     mo.vx += -ax * .05 * K * sg; mo.vy += ay * .05 * K * sg;
     var rr = e.rotationRate; if (rr && rr.alpha != null) mo.vr += -rr.alpha * .0012 * K * sg;
     moKick();
   }
   function onDO(e){
-    if (cardA <= 0 || e.gamma == null) return;
+    if (cardA <= 0 || e.gamma == null || !S.cardMotion) return;
     if (!mo.ref) mo.ref = {g: e.gamma, b: e.beta};
     mo.ref.g += (e.gamma - mo.ref.g) * .01; mo.ref.b += (e.beta - mo.ref.b) * .01;
     var K = S.cardMotionK, sg = S.cardMotionInv ? -1 : 1;
@@ -1407,14 +1451,14 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     cancelAnimationFrame(mo.raf); mo.raf = 0; mo.ref = null; mo.tx = mo.ty = 0;
   }
   function startMotion(fromClick){
-    if (!(S.effect === 'card' && S.cardMotion) || mo.on) return;
+    if (!motionWanted() || mo.on) return;
     if (mo.perm) enableMotion(); else if (fromClick && !mo.asked) askMotion(function(ok){ if (ok && running) enableMotion(); });
   }
   function shown(){ return new Date(Date.now() + offset * 60000); }
   function frame(){
     if (!running) return;
     var o = S.debug ? {debug: debugInfo()} : {};
-    if (cardA > 0) o.card = {id: S.card, a: cardA, dx: mo.x * stR.cw(), dy: mo.y * stR.cw(), rot: mo.r};
+    if (cardA > 0) o.card = {id: cardCur, id2: morphQ > 0 ? S.card2 : null, q: morphQ, a: cardA, dx: mo.x * stR.cw(), dy: mo.y * stR.cw(), rot: mo.r};
     if (rollQ < 1) o.roll = {prev: new Date(Date.now() + rollPrev * 60000), q: rollQ};
     stR.render(shown(), o);
   }
@@ -1461,7 +1505,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     if (S.effect === 'card'){
       if (busy) return;
       var on = !cardOn, d = (on ? S.delay : S.delay2) * 1000;
-      function go(){ timer = null; if (!running){ busy = false; return; } cardOn = on; animCard(on ? 1 : 0, function(){ busy = false; }); }
+      function go(){ timer = null; if (!running){ busy = false; return; } cardOn = on; if (on){ cancelAnimationFrame(morphRaf); cardCur = S.card; morphQ = 0; } animCard(on ? 1 : 0, function(){ busy = false; }); }
       busy = true;
       if (d > 0) timer = setTimeout(go, d); else go();
       return;
@@ -1574,7 +1618,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   }, 250);
 
   /* version et mode hors ligne */
-  var VERSION = '27', offlineReady = false;
+  var VERSION = '28', offlineReady = false;
   function buildNote(){ $('#buildNote').textContent = 'Version ' + VERSION + (offlineReady ? ' · prête hors ligne' : ''); }
   buildNote();
   try {
