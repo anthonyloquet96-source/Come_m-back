@@ -261,7 +261,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
       <select id="cardFade" class="txt"><option value="fade">Fondu rapide</option><option value="cut">Instantanée</option></select>
       <div class="row"><label for="delay2">Délai avant la disparition</label><output id="delay2Val"></output><input id="delay2" type="range" min="0" max="15" step="0.5"></div>
       <label class="check"><input id="cardClock" type="checkbox">Garder l'heure par-dessus la carte</label>
-      <label class="check"><input id="cardFlick" type="checkbox">Un glissement rapide d'un doigt (gauche ou droite) fait sortir la carte de l'écran</label>
+      <label class="check"><input id="cardFlick" type="checkbox">Je peux déplacer la carte avec un doigt ; lancée vite sur le côté, elle sort de l'écran</label>
       <label class="check"><input id="cardMotion" type="checkbox">La carte bouge quand je secoue ou incline le téléphone</label>
       <div id="motionBox" hidden>
         <div class="row"><label for="cardMotionK">Sensibilité</label><output id="cardMotionKVal"></output><input id="cardMotionK" type="range" min="0.3" max="3" step="0.1"></div>
@@ -1362,7 +1362,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   /* ---------- scène ---------- */
   var running = false, busy = false, timer = null, offset = 0, wl = null;
 
-  var rafId = 0, rollPrev = 0, rollQ = 1, cardOn = false, cardA = 0, cardRaf = 0, cardCur = 'AS', morphQ = 0, morphRaf = 0, morphAt = 0, flickX = 0, flickR = 0, flickRaf = 0;
+  var rafId = 0, rollPrev = 0, rollQ = 1, cardOn = false, cardA = 0, cardRaf = 0, cardCur = 'AS', morphQ = 0, morphRaf = 0, morphAt = 0, flickX = 0, flickY = 0, flickRaf = 0, stK = 1;
   function animCard(to, done){
     cancelAnimationFrame(cardRaf);
     var from = cardA, dur = S.cardFade === 'fade' ? 450 : 0, t0 = 0;
@@ -1376,7 +1376,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     }
     cardRaf = requestAnimationFrame(tick);
   }
-  function resetCard(){ cancelAnimationFrame(flickRaf); flickX = 0; flickR = 0; cancelAnimationFrame(cardRaf); cancelAnimationFrame(morphRaf); cardCur = S.card; morphQ = 0; cardOn = false; cardA = 0; mo.x = mo.y = mo.vx = mo.vy = mo.r = mo.vr = 0; }
+  function resetCard(){ cancelAnimationFrame(flickRaf); flickX = 0; flickY = 0; cancelAnimationFrame(cardRaf); cancelAnimationFrame(morphRaf); cardCur = S.card; morphQ = 0; cardOn = false; cardA = 0; mo.x = mo.y = mo.vx = mo.vy = mo.r = mo.vr = 0; }
   /* mouvement : la carte réagit aux secousses et à l'inclinaison du téléphone */
   var mo = {x: 0, y: 0, vx: 0, vy: 0, r: 0, vr: 0, tx: 0, ty: 0, on: false, raf: 0, last: 0, ref: null, perm: false, gx: 0, gy: 0, gz: 0};
   function motionWanted(){ return S.effect === 'card' && (!!S.cardMotion || !!S.cardMorph); }
@@ -1397,23 +1397,47 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     } catch(err){ cb && cb(false); }
   }
   function flickable(){ return S.effect === 'card' && !!S.cardFlick && cardOn && cardA > .5 && !busy && running; }
-  /* la carte « sort » de l'écran, comme tirée de sous le téléphone vers la main */
-  function doFlick(dir){
-    if (!flickable()) return;
-    busy = true; cancelAnimationFrame(cardRaf); cancelAnimationFrame(morphRaf);
+  /* la carte suit le doigt ; lâchée vite elle part encore plus vite, sinon elle revient à sa place */
+  function dragBegin(){
+    if (!flickable()) return false;
+    busy = true; cancelAnimationFrame(cardRaf); cancelAnimationFrame(morphRaf); cancelAnimationFrame(flickRaf);
+    return true;
+  }
+  function dragMove(dx, dy){ flickX = dx * stK; flickY = dy * stK; frame(); }
+  function dragRelease(vx, vy){
+    cancelAnimationFrame(flickRaf);
     var cw = stR.cw(), kw = cw * clamp(S.cardS, 20, 400) / 100, cxc = S.cardX / 100 * cw;
-    var dist = (dir > 0 ? cw - cxc + kw / 2 : cxc + kw / 2) + cw * .06 + Math.abs(mo.x * cw);
-    var t0 = 0, dur = 300;
-    try { navigator.vibrate && navigator.vibrate(15); } catch(e){}
-    function tick(now){
-      if (!running) return;
-      if (!t0) t0 = now;
-      var t = Math.min(1, (now - t0) / dur), e = t * t * (1.6 - .6 * t);
-      flickX = dir * dist * e; flickR = dir * .12 * e; frame();
-      if (t < 1) flickRaf = requestAnimationFrame(tick);
-      else { flickX = 0; flickR = 0; cardOn = false; cardA = 0; cardCur = S.card; morphQ = 0; busy = false; frame(); }
+    var vX = vx * stK, vY = vy * stK, fast = Math.abs(vx) > 600 && Math.abs(vx) > Math.abs(vy) * 1.2;
+    var ctr = cxc + flickX, past = ctr < 0 || ctr > cw;
+    var last = 0;
+    function finish(){
+      flickX = 0; flickY = 0; cardOn = false; cardA = 0; cardCur = S.card; morphQ = 0; busy = false; frame();
     }
-    flickRaf = requestAnimationFrame(tick);
+    if (fast || past){
+      var dir = fast ? (vX > 0 ? 1 : -1) : (flickX > 0 ? 1 : -1);
+      var v = dir * clamp(Math.max(Math.abs(vX), cw * 1.6), 0, cw * 9);
+      if (fast) vY *= .5; else vY = 0;
+      var out = function(){ return dir > 0 ? cxc + flickX - kw / 2 > cw : cxc + flickX + kw / 2 < 0; };
+      var go = function(now){
+        if (!running) return;
+        var dt = last ? Math.min(.034, (now - last) / 1000) : .016; last = now;
+        v += v * 3.2 * dt; flickX += v * dt; flickY += vY * dt; frame();
+        if (out()) finish(); else flickRaf = requestAnimationFrame(go);
+      };
+      flickRaf = requestAnimationFrame(go);
+    } else {
+      var sx = vX, sy = vY;
+      var back = function(now){
+        if (!running) return;
+        var dt = last ? Math.min(.034, (now - last) / 1000) : .016; last = now;
+        sx += (-190 * flickX - 24 * sx) * dt; flickX += sx * dt;
+        sy += (-190 * flickY - 24 * sy) * dt; flickY += sy * dt;
+        frame();
+        if (Math.abs(flickX) + Math.abs(flickY) < .4 && Math.abs(sx) + Math.abs(sy) < 8){ flickX = 0; flickY = 0; busy = false; frame(); }
+        else flickRaf = requestAnimationFrame(back);
+      };
+      flickRaf = requestAnimationFrame(back);
+    }
   }
   function doMorph(){
     if (!S.cardMorph || !cardOn || cardA < .9 || cardCur === S.card2 || morphQ > 0) return;
@@ -1479,11 +1503,11 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   function frame(){
     if (!running) return;
     var o = S.debug ? {debug: debugInfo()} : {};
-    if (cardA > 0) o.card = {id: cardCur, id2: morphQ > 0 ? S.card2 : null, q: morphQ, a: cardA, dx: mo.x * stR.cw() + flickX, dy: mo.y * stR.cw(), rot: mo.r + flickR};
+    if (cardA > 0) o.card = {id: cardCur, id2: morphQ > 0 ? S.card2 : null, q: morphQ, a: cardA, dx: mo.x * stR.cw() + flickX, dy: mo.y * stR.cw() + flickY, rot: mo.r};
     if (rollQ < 1) o.roll = {prev: new Date(Date.now() + rollPrev * 60000), q: rollQ};
     stR.render(shown(), o);
   }
-  function fitStage(){ var s = layoutFull(stage, true); stR.fit(s.w, s.h); frame(); }
+  function fitStage(){ var s = layoutFull(stage, true); stR.fit(s.w, s.h); stK = stR.cw() / s.w; frame(); }
   function refit(){ if (running) fitStage(); else if (ed.open) fitEd(); }
   var rotT = 0, lastSig = '';
   function sigNow(){ return window.innerWidth + 'x' + window.innerHeight + '/' + curAngle(); }
@@ -1608,18 +1632,21 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
       if (!wl) lock();
       if (!mo.on) startMotion(false);
       ptrs[e.pointerId] = cy(e); count++;
-      if (count >= 2){ multi = true; startY = meanY(); clearTimeout(pend); pend = null; return; }
-      fl = {x: cx(e), y: cy(e), t: performance.now(), moved: false, done: false, defer: flickable()};
+      if (count >= 2){ multi = true; startY = meanY(); clearTimeout(pend); pend = null; if (fl.drag){ fl.drag = false; dragRelease(0, 0); } return; }
+      fl = {x: cx(e), y: cy(e), t: performance.now(), moved: false, drag: false, s: [], defer: flickable()};
       if (fl.defer) return;
       pend = setTimeout(function(){ pend = null; if (!multi) rewind(); }, 120);
     });
     sc.addEventListener('pointermove', function(e){
       if (!(e.pointerId in ptrs)) return;
       ptrs[e.pointerId] = cy(e);
-      if (count === 1 && fl.defer && !fl.done){
-        var dx = cx(e) - fl.x, dy = cy(e) - fl.y;
-        if (Math.abs(dx) + Math.abs(dy) > 14) fl.moved = true;
-        if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.3 && performance.now() - fl.t < 700){ fl.done = true; doFlick(dx > 0 ? 1 : -1); }
+      if (count === 1 && fl.defer){
+        var dx = cx(e) - fl.x, dy = cy(e) - fl.y, tn = performance.now();
+        if (!fl.drag && Math.abs(dx) + Math.abs(dy) > 10){ fl.moved = true; fl.drag = dragBegin(); }
+        if (fl.drag){
+          fl.s.push({t: tn, x: cx(e), y: cy(e)}); while (fl.s.length > 2 && tn - fl.s[0].t > 110) fl.s.shift();
+          dragMove(dx, dy);
+        }
       }
       if (count >= 2 && meanY() - startY > 70){ ptrs = {}; count = 0; multi = false; leave(); }
     });
@@ -1627,7 +1654,19 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
       if (!(e.pointerId in ptrs)) return;
       delete ptrs[e.pointerId]; count = Math.max(0, count - 1);
       if (count >= 2) startY = meanY();
-      if (count === 0){ var wasMulti = multi; multi = false; if (wasMulti){ clearTimeout(pend); pend = null; } else if (fl.defer && e.type === 'pointerup' && !fl.done && !fl.moved){ fl.defer = false; rewind(); } }
+      if (count === 0){
+        var wasMulti = multi; multi = false;
+        if (wasMulti){ clearTimeout(pend); pend = null; }
+        else if (fl.drag){
+          fl.drag = false;
+          var sm = fl.s, n = sm.length, vx = 0, vy = 0;
+          if (e.type === 'pointerup' && n > 1 && performance.now() - sm[n - 1].t < 90){
+            var dt = Math.max(16, sm[n - 1].t - sm[0].t) / 1000; vx = (sm[n - 1].x - sm[0].x) / dt; vy = (sm[n - 1].y - sm[0].y) / dt;
+          }
+          dragRelease(vx, vy);
+        }
+        else if (fl.defer && e.type === 'pointerup' && !fl.moved){ fl.defer = false; rewind(); }
+      }
     }
     sc.addEventListener('pointerup', up); sc.addEventListener('pointercancel', up);
   })();
@@ -1647,7 +1686,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   }, 250);
 
   /* version et mode hors ligne */
-  var VERSION = '29', offlineReady = false;
+  var VERSION = '30', offlineReady = false;
   function buildNote(){ $('#buildNote').textContent = 'Version ' + VERSION + (offlineReady ? ' · prête hors ligne' : ''); }
   buildNote();
   try {
