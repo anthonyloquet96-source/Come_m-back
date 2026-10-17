@@ -1,6 +1,6 @@
 /* Marche Arrière : mode hors ligne. Réseau d'abord (pour recevoir les mises à jour), copie locale si pas de réseau. */
-var CACHE = 'marche-arriere-v37';
-var CORE = ['./', './index.html', './relay.js', './remote.html', './remote.webmanifest', './apple-touch-icon.png', './icon-512.png', './manifest.webmanifest'];
+var CACHE = 'marche-arriere-v38';
+var CORE = ['./', './index.html', './relay.js', './qr.js', './remote.html', './remote.webmanifest', './apple-touch-icon.png', './icon-512.png', './manifest.webmanifest'];
 
 self.addEventListener('install', function(e){
   e.waitUntil(caches.open(CACHE).then(function(c){ return c.addAll(CORE); }).then(function(){ return self.skipWaiting(); }));
