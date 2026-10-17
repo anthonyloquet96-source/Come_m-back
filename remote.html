@@ -28,6 +28,18 @@ h1{margin:4px 0 0;font:700 20px/1.2 -apple-system,system-ui,sans-serif}
 .phase{margin:0;text-align:center;font:600 15px/1.3 -apple-system,system-ui,sans-serif;color:var(--brass);min-height:20px}
 .btn{appearance:none;border:1.5px solid var(--brass);background:transparent;color:var(--brass);font:600 16px/1 -apple-system,system-ui,sans-serif;padding:14px 16px;border-radius:8px;min-height:50px;cursor:pointer;width:100%}
 .btn.solid{background:var(--brass);color:var(--brass-ink);font-size:20px;min-height:84px;border-radius:12px}
+.btn{position:relative;overflow:hidden;transition:transform .12s ease,filter .12s ease,background-color .2s ease,border-color .2s ease,color .2s ease}
+.btn:not([disabled]):active{transform:scale(.97);filter:brightness(.9)}
+.btn .rip{position:absolute;border-radius:50%;background:rgba(255,255,255,.22);transform:translate(-50%,-50%) scale(0);width:20px;height:20px;pointer-events:none;animation:rip .55s ease-out forwards}
+.btn.solid .rip{background:rgba(27,19,5,.28)}
+@keyframes rip{to{transform:translate(-50%,-50%) scale(30);opacity:0}}
+.btn.sending{pointer-events:none;filter:brightness(.8)}
+.btn.sending::before{content:"";display:inline-block;width:.8em;height:.8em;margin-right:.55em;vertical-align:-.1em;border:2.5px solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.btn.sent{pointer-events:none;background:#2f8f5f;border-color:#2f8f5f;color:#fff;filter:none;animation:pop .35s ease-out}
+@keyframes pop{0%{transform:scale(.96)}55%{transform:scale(1.025)}100%{transform:scale(1)}}
+.btn.fail{pointer-events:none;background:#a8333b;border-color:#a8333b;color:#fff;filter:none;animation:shake .4s ease-out}
+@keyframes shake{20%,60%{transform:translateX(-7px)}40%,80%{transform:translateX(7px)}}
 .btn.solid:active{filter:brightness(.92)}
 .btn.ghost{border-color:var(--line);color:var(--chalk)}
 .btn.hot{background:rgba(224,169,62,.14)}
@@ -203,17 +215,49 @@ label.l{font-size:14px;color:var(--mute)}
   function id(){ return Math.random().toString(36).slice(2, 10); }
   function ping(){ if (conn) conn.send({k: 'hello'}); }
   /* envoie un ordre ; confirme « reçu » quand le téléphone répond, sinon le dit clairement */
-  function cmd(k, extra, label){
-    if (!conn){ toast('Pas de liaison'); return; }
-    var i = id(), m = Object.assign({k: k, id: i}, extra || {});
-    pend[i] = {label: label || '', t: setTimeout(function(){ if (pend[i]){ delete pend[i]; toast('Pas de réponse du téléphone', 2600); } }, 6000)};
-    conn.send(m).then(function(ok){ if (!ok && pend[i]){ clearTimeout(pend[i].t); delete pend[i]; toast('Non envoyé : pas de réseau ?', 2600); } });
+  /* retour visuel sur le bouton : « Envoi… » → « ✓ Reçu » (vert) ou « Pas de réponse » / « Non envoyé » (rouge, secousse) */
+  function flash(btn, state, text, ms){
+    if (!btn) return;
+    clearTimeout(btn._t);
+    if (btn.dataset.base === undefined) btn.dataset.base = btn.textContent;
+    btn.classList.remove('sending', 'sent', 'fail'); btn.classList.add(state);
+    btn.dataset.st = state; btn.textContent = text;
+    btn.setAttribute('aria-busy', state === 'sending' ? 'true' : 'false');
+    if (ms) btn._t = setTimeout(function(){ unflash(btn); }, ms);
   }
+  function unflash(btn){
+    if (!btn) return;
+    clearTimeout(btn._t);
+    btn.classList.remove('sending', 'sent', 'fail'); delete btn.dataset.st; btn.removeAttribute('aria-busy');
+    if (btn.dataset.base !== undefined){ btn.textContent = btn.dataset.base; delete btn.dataset.base; }
+    render();
+  }
+  /* o : {label, btn, ok (texte de succès), then (fonction appelée à l'accusé)} */
+  function cmd(k, extra, o){
+    o = o || {};
+    if (!conn){ if (o.btn){ flash(o.btn, 'fail', 'Pas de liaison', 1800); buzzErr(); } else toast('Pas de liaison'); return; }
+    var i = id(), m = Object.assign({k: k, id: i}, extra || {});
+    if (o.btn) flash(o.btn, 'sending', 'Envoi…', 0);
+    function fail(txt){
+      if (!pend[i]) return;
+      clearTimeout(pend[i].t); delete pend[i];
+      if (o.btn){ flash(o.btn, 'fail', txt, 2000); buzzErr(); } else toast(txt, 2600);
+      if (o.onfail) o.onfail(txt);
+    }
+    pend[i] = {o: o, t: setTimeout(function(){ fail('Pas de réponse'); }, 6000)};
+    conn.send(m).then(function(ok){ if (!ok) fail('Non envoyé · pas de réseau ?'); });
+  }
+  function buzzErr(){ try { navigator.vibrate && navigator.vibrate([40, 60, 40]); } catch(e){} }
   function onMsg(m){
     if (m.k !== 'state') return;
     st = m; lastSeen = Date.now();
     if (m.cfg) cfg = Object.assign({}, cfg, m.cfg, patch);
-    if (m.re && pend[m.re]){ clearTimeout(pend[m.re].t); var l = pend[m.re].label; delete pend[m.re]; toast('✓ ' + (l || 'Reçu'), 1100); }
+    if (m.re && pend[m.re]){
+      var o = pend[m.re].o; clearTimeout(pend[m.re].t); delete pend[m.re];
+      if (o.btn){ flash(o.btn, 'sent', '✓ ' + (o.ok || 'Reçu par le téléphone'), 1500); try { navigator.vibrate && navigator.vibrate(25); } catch(e){} }
+      else if (o.label) toast('✓ ' + o.label, 1100);
+      if (o.then) o.then();
+    }
     render(); bar();
   }
 
@@ -223,10 +267,11 @@ label.l{font-size:14px;color:var(--mute)}
     clearTimeout(patchT);
     patchT = setTimeout(flush, now ? 0 : 350);
   }
-  function flush(){
+  function flush(then, onfail){
     clearTimeout(patchT); patchT = 0;
     var p = patch; patch = {};
-    if (Object.keys(p).length) cmd('cfg', {set: p}, 'Réglé');
+    if (Object.keys(p).length) cmd('cfg', {set: p}, {label: 'Réglé', then: then, onfail: onfail});
+    else if (then) then();
   }
 
   /* ---------- affichage ---------- */
@@ -296,16 +341,41 @@ label.l{font-size:14px;color:var(--mute)}
     /* boutons d'action */
     var p = st && st.ph, down = st && st.run === false;
     var lab = fx === 'time' ? (cfg.mode === 'step' ? 'Enlever une minute' : 'Reculer') : fx === 'sms' ? 'Faire arriver le SMS' : (p === 'on' ? 'Faire disparaître la carte' : 'Faire apparaître la carte');
-    $('#touch').textContent = lab; $('#touch').disabled = !!down;
+    if (!$('#touch').dataset.st) $('#touch').textContent = lab; $('#touch').disabled = !!down;
     $('#rearm').disabled = !!down; $('#rearm').classList.toggle('hot', !!p && p !== 'armed' && p !== 'busy');
     $('#morph').hidden = !(fx === 'card' && cfg.cardMorph); $('#morph').disabled = !!down || p !== 'on';
     $('#hint').textContent = fx === 'card' && cfg.cardMorph ? 'Secousse : change la carte à distance, sans bouger le téléphone.' : '';
   }
 
   /* ---------- gestes ---------- */
-  $('#touch').addEventListener('click', function(){ buzz(); cmd('touch', null, 'Touché'); });
-  $('#rearm').addEventListener('click', function(){ buzz(); flush(); cmd('rearm', null, 'Réarmé'); });
-  $('#morph').addEventListener('click', function(){ buzz(); cmd('morph', null, 'Secousse'); });
+  /* texte de succès selon l'effet : l'accusé confirme la réception, pas la fin de l'effet */
+  function okText(){
+    var fx = (st && st.fx) || cfg.effect, p = st && st.ph, d = 0, t;
+    if (fx === 'time'){ t = cfg.mode === 'step' ? 'minute enlevée' : 'recul lancé'; d = cfg.delay; }
+    else if (fx === 'sms'){ t = 'SMS envoyé'; d = cfg.delay; }
+    else if (p === 'on'){ t = 'la carte disparaît'; d = cfg.delay2; }
+    else { t = 'la carte apparaît'; d = cfg.delay; }
+    return 'Reçu · ' + t + (d > 0 ? ' dans ' + d + ' s' : '');
+  }
+  /* les réglages en attente partent d'abord, et l'ordre seulement une fois qu'ils sont appliqués */
+  function press(btn, k, ok, label){
+    if (btn.dataset.st) return;
+    buzz();
+    var go = function(){ cmd(k, null, {btn: btn, ok: ok(), label: label}); };
+    if (Object.keys(patch).length){ flash(btn, 'sending', 'Envoi…', 0); flush(function(){ unflashQuiet(btn); go(); }, function(t){ flash(btn, 'fail', t, 2000); }); }
+    else go();
+  }
+  function unflashQuiet(btn){ btn.classList.remove('sending'); delete btn.dataset.st; btn.removeAttribute('aria-busy'); }
+  function ripple(e){
+    var b = e.target.closest('.btn'); if (!b || b.disabled || b.dataset.st) return;
+    var r = b.getBoundingClientRect(), d = document.createElement('span');
+    d.className = 'rip'; d.style.left = (e.clientX - r.left) + 'px'; d.style.top = (e.clientY - r.top) + 'px';
+    b.appendChild(d); setTimeout(function(){ if (d.parentNode) d.parentNode.removeChild(d); }, 650);
+  }
+  document.addEventListener('pointerdown', ripple);
+  $('#touch').addEventListener('click', function(e){ press(e.currentTarget, 'touch', okText, 'Touché'); });
+  $('#rearm').addEventListener('click', function(e){ press(e.currentTarget, 'rearm', function(){ return 'Réarmé'; }, 'Réarmé'); });
+  $('#morph').addEventListener('click', function(e){ press(e.currentTarget, 'morph', function(){ return 'Secousse envoyée'; }, 'Secousse'); });
   $('#bar').addEventListener('click', function(){ ping(); toast('Test envoyé', 900); });
   $('#fxSeg').addEventListener('click', function(e){ var b = e.target.closest('.chip'); if (b) set('effect', b.dataset.fx, true); });
   var setMin = function(v){ v = parseInt(v, 10); if (!isNaN(v)) set('minutes', clamp(v, 1, 720)); };
