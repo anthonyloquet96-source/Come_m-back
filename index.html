@@ -183,6 +183,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
 .erow select{background:var(--felt-2);color:var(--chalk);border:1px solid var(--line);border-radius:6px;font:400 14px var(--f-body);padding:8px 10px;min-height:40px}
 .sw{width:40px;height:40px;border-radius:50%;border:2px solid var(--line);cursor:pointer;padding:0}
 .sw[aria-pressed="true"]{border-color:var(--brass);box-shadow:0 0 0 2px var(--brass)}
+.rc-code{margin:0;text-align:center;font:500 22px/1.3 var(--f-mono);letter-spacing:.06em;color:var(--chalk);user-select:all;-webkit-user-select:all}
 </style>
 
 <div id="setup" class="wrap" hidden>
@@ -407,6 +408,28 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     </div>
   </details>
 
+  <details class="cat" id="catRemote">
+    <summary><span class="n">4</span>Télécommande</summary>
+    <div class="catbody">
+      <div class="grp">
+        <h3>Pilotage à distance</h3>
+        <label class="check"><input id="rcOn" type="checkbox">Autoriser une télécommande</label>
+        <p class="help">Pose ce téléphone en mode tour et pilote-le depuis un autre. Désactivé : aucune connexion n'est ouverte, l'app reste 100 % locale.</p>
+      </div>
+      <div class="grp" id="rcBox" hidden>
+        <h3>Jumelage</h3>
+        <p class="rc-code" id="rcCode"></p>
+        <div class="chips">
+          <button class="chip" type="button" id="rcCopyLink">Copier le lien</button>
+          <button class="chip" type="button" id="rcCopyCode">Copier le code</button>
+          <button class="chip" type="button" id="rcNew">Nouveau code</button>
+        </div>
+        <p class="help" id="rcState"></p>
+        <p class="help">Ouvre le lien sur l'autre téléphone, ou saisis le code sur la page télécommande. Un nouveau code coupe l'ancienne télécommande. Les ordres sont chiffrés : le relais ne voit rien d'utile.</p>
+      </div>
+    </div>
+  </details>
+
   </div>
 
   <p class="note" id="buildNote"></p>
@@ -491,6 +514,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
 </div>
 <div id="probe" aria-hidden="true" style="position:absolute;left:-9999px;top:0;width:1px;height:1px;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)"></div>
 
+<script src="relay.js"></script>
 <script>
 (function(){
   var $ = function(s){ return document.querySelector(s); };
@@ -1795,7 +1819,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   }, 250);
 
   /* version et mode hors ligne */
-  var VERSION = '36', offlineReady = false;
+  var VERSION = '37', offlineReady = false;
   function buildNote(){ $('#buildNote').textContent = 'Version ' + VERSION + (offlineReady ? ' · prête hors ligne' : ''); }
   buildNote();
   try {
@@ -1804,6 +1828,109 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
       navigator.serviceWorker.ready.then(function(){ offlineReady = true; buildNote(); }).catch(function(){});
     }
   } catch(e){}
+
+  /* ---------- télécommande : point d'entrée des ordres ----------
+     Facultatif de bout en bout : sans relay.js, sans réseau ou désactivée, l'app se comporte comme avant.
+     Aucun ordre ne passe par un canal non chiffré ; seuls ceux de la liste ci-dessous sont exécutés. */
+  var RC_KEY = 'marche-arriere-remote-v1';
+  var RC = {on: false, secret: ''};
+  try { Object.assign(RC, JSON.parse(localStorage.getItem(RC_KEY) || '{}')); } catch(e){}
+  var rcConn = null, rcNet = 'off', rcSeen = 0, rcSig = '', rcLast = 0;
+  function rcSave(){ try { localStorage.setItem(RC_KEY, JSON.stringify(RC)); } catch(e){} }
+  var CARD_RE = /^(?:(?:A|[2-9]|10|J|Q|K)[SHDC]|BR|BB|BL|JKC|JKB)$/;
+  var rcInt = function(a, b){ return function(v){ v = parseInt(v, 10); return isNaN(v) ? undefined : clamp(v, a, b); }; };
+  var rcSec = function(v){ v = parseFloat(v); return isNaN(v) ? undefined : clamp(Math.round(v * 2) / 2, 0, 15); };
+  var rcStr = function(n){ return function(v){ return typeof v === 'string' ? v.slice(0, n) : undefined; }; };
+  var rcBool = function(v){ return typeof v === 'boolean' ? v : undefined; };
+  var rcCard = function(v){ return typeof v === 'string' && CARD_RE.test(v) ? v : undefined; };
+  var RC_SET = {
+    effect: function(v){ return v === 'time' || v === 'sms' || v === 'card' ? v : undefined; },
+    minutes: rcInt(1, 720), mode: function(v){ return v === 'auto' || v === 'step' ? v : undefined; }, duration: rcInt(2, 20),
+    delay: rcSec, delay2: rcSec,
+    smsFrom: rcStr(40), smsText: rcStr(120), smsSound: rcBool,
+    card: rcCard, card2: rcCard, cardMorph: rcBool
+  };
+  function rcPhase(){
+    if (S.effect === 'time'){ if (offset <= 0) return 'done'; if (busy) return 'busy'; return offset === S.minutes ? 'armed' : 'partial'; }
+    if (S.effect === 'sms') return smsOn ? 'on' : busy ? 'busy' : 'armed';
+    return busy ? 'busy' : cardOn ? 'on' : 'armed';
+  }
+  function rcState(re){
+    var st = {k: 'state', v: VERSION, run: running, fx: S.effect, ph: rcPhase(), left: Math.max(0, offset), cfg: {}};
+    Object.keys(RC_SET).forEach(function(k){ st.cfg[k] = S[k]; });
+    if (re) st.re = re;
+    return st;
+  }
+  function rcSigOf(st){ return [st.run, st.fx, st.ph, st.fx === 'time' && S.mode === 'step' ? st.left : 0].join('|'); }
+  function rcReply(re){ if (!rcConn) return; var st = rcState(re); rcSig = rcSigOf(st); rcLast = Date.now(); rcConn.send(st); }
+  function rcApply(set){
+    if (!set || typeof set !== 'object') return;
+    var untouched = running && !busy && !smsOn && !cardOn && cardA === 0 && offset === startOff();
+    var fx = S.effect, mn = S.minutes, ch = false;
+    Object.keys(RC_SET).forEach(function(k){
+      if (!Object.prototype.hasOwnProperty.call(set, k)) return;
+      var v = RC_SET[k](set[k]);
+      if (v !== undefined && S[k] !== v){ S[k] = v; ch = true; }
+    });
+    if (!ch) return;
+    save();
+    /* changer d'effet réarme toujours ; changer les minutes ne réarme que si rien n'a encore été joué */
+    if (running){ if (S.effect !== fx || (untouched && S.minutes !== mn)) rearm(); }
+    else refreshUI();
+  }
+  function rcHandle(m){
+    rcSeen = Date.now(); rcUI();
+    switch (m.k){
+      case 'hello': break;
+      case 'cfg': rcApply(m.set); break;
+      case 'touch': if (running) rewind(); break;
+      case 'rearm': if (running) rearm(); break;
+      case 'morph': if (running) doMorph(); break;
+      default: return;
+    }
+    rcReply(typeof m.id === 'string' ? m.id.slice(0, 16) : undefined);
+  }
+  function rcStop(){ if (rcConn){ try { rcConn.close(); } catch(e){} } rcConn = null; rcNet = 'off'; }
+  function rcStart(){
+    rcStop();
+    if (!RC.on || !RC.secret || !window.Relay || !Relay.supported()){ rcUI(); return; }
+    var c = Relay.open(RC.secret, 'host'); rcConn = c;
+    c.onstatus = function(s){ if (rcConn !== c) return; rcNet = s; rcUI(); if (s === 'online') rcReply(); };
+    c.onmessage = function(m){ if (rcConn === c) rcHandle(m); };
+  }
+  function rcLink(){ return new URL('remote.html', location.href).href + '#' + RC.secret; }
+  function rcUI(){
+    $('#rcOn').checked = !!RC.on; $('#rcBox').hidden = !RC.on;
+    if (!RC.on) return;
+    $('#rcCode').textContent = RC.secret;
+    var net = !window.Relay || !Relay.supported() ? 'Indisponible sur ce navigateur' : rcNet === 'online' ? 'Relais joignable' : rcNet === 'connecting' ? 'Connexion au relais…' : 'Hors ligne · l\'app reste utilisable seule';
+    var s = rcSeen ? Math.round((Date.now() - rcSeen) / 1000) : -1;
+    $('#rcState').textContent = net + ' · ' + (s < 0 ? 'aucune télécommande vue' : 'télécommande vue il y a ' + (s < 90 ? s + ' s' : Math.round(s / 60) + ' min'));
+  }
+  function rcCopy(txt, btn){
+    var done = function(){ var o = btn.textContent; btn.textContent = 'Copié'; setTimeout(function(){ btn.textContent = o; }, 1200); };
+    try { navigator.clipboard.writeText(txt).then(done, function(){}); } catch(e){}
+  }
+  $('#rcOn').addEventListener('change', function(e){
+    if (e.target.checked && !(window.Relay && Relay.supported())){ e.target.checked = false; rcUI(); return; }
+    RC.on = e.target.checked;
+    if (RC.on && !RC.secret) RC.secret = Relay.newSecret();
+    rcSave(); rcStart(); rcUI();
+  });
+  $('#rcNew').addEventListener('click', function(){
+    if (!confirm('Générer un nouveau code ? L\'ancienne télécommande sera déconnectée.')) return;
+    RC.secret = Relay.newSecret(); rcSeen = 0; rcSave(); rcStart(); rcUI();
+  });
+  $('#rcCopyLink').addEventListener('click', function(e){ rcCopy(rcLink(), e.currentTarget); });
+  $('#rcCopyCode').addEventListener('click', function(e){ rcCopy(RC.secret, e.currentTarget); });
+  document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'visible' && rcConn) rcConn.reconnect(); });
+  setInterval(function(){
+    if (!rcConn) return;
+    var st = rcState(), sg = rcSigOf(st);
+    if (sg !== rcSig && Date.now() - rcLast > 400){ rcSig = sg; rcLast = Date.now(); rcConn.send(st); }
+  }, 200);
+  setInterval(function(){ if (RC.on && !setup.hidden) rcUI(); }, 2000);
+  rcStart(); rcUI();
 
   /* démarrage */
   refreshUI();
