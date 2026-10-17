@@ -27,10 +27,11 @@ Chaque message porte `t` (date) et `n` (nonce) : refusé s'il a plus de 60 s ou 
 | Sens | `k` | Rôle |
 |---|---|---|
 | remote → hôte | `hello` | demande l'état (test de liaison) |
-| | `cfg` + `set{}` | règle : `effect minutes mode duration delay delay2 smsFrom smsText smsSound card card2 cardMorph` (liste blanche, valeurs bornées) |
+| | `cfg` + `set{}` | règle : `effect (time/sms/card/clock) minutes mode duration delay delay2 smsFrom smsText smsSound card card2 cardMorph clockT clockD` (liste blanche, valeurs bornées) |
 | | `touch` | exactement le toucher d'un doigt (`rewind()`) |
 | | `rearm` | réarmer (= appui long coin droit) |
 | | `morph` | la « secousse » à distance (`doMorph()`) |
+| | `show` + `card` | annonce directe : la carte apparaît tout de suite, ou remplace en fondu celle qui est affichée (effet « carte » seulement) |
 | hôte → remote | `state` | `run` (mode tour ?), `fx`, `ph` (armed/busy/on/partial/done), `left`, `cfg{}`, `re` (accusé de l'ordre) |
 
 Règles côté hôte : un changement d'effet réarme toujours ; un changement de minutes réarme seulement si rien n'a encore été joué.
@@ -47,4 +48,7 @@ Pas de battement de cœur : un test de liaison toutes les 2 min seulement quand 
 - **iOS** : l'autorisation du capteur de mouvement se demande toujours au bouton « Lancer le tour ». La télécommande ne peut pas lancer le tour. Le `morph` à distance fonctionne sans capteur.
 - Un ordre `touch` envoyé hors réseau n'est **pas** mis en attente (il serait obsolète) : la télécommande affiche « Non envoyé ».
 - Les quotas anonymes de ntfy.sh sont à confirmer avant un spectacle important (ordre de grandeur : quelques centaines de messages par jour et par adresse IP). L'usage normal en consomme peu ; au besoin, auto-héberger ntfy.
-- Pas encore de QR code (génération à ajouter) : lien à copier ou code à saisir.
+
+## Effets (v43)
+- **L'heure devient…** (`clock`) : au toucher l'heure (et la date, si choisie) passe à la valeur voulue avec le défilement des chiffres, puis continue de tourner ; un second toucher rétablit l'heure réelle. Changer `clockT`/`clockD` à distance quand l'heure est déjà changée met l'écran à jour immédiatement.
+- **Annonce directe d'une carte** : côté télécommande, case « Afficher dès que je choisis » ; valeur + couleur (ou carte spéciale) envoient `show`.

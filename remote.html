@@ -55,7 +55,7 @@ h1{margin:4px 0 0;font:700 20px/1.2 -apple-system,system-ui,sans-serif}
 .chip[aria-pressed="true"]{border-color:var(--brass);color:var(--brass);background:rgba(224,169,62,.12)}
 .chip.red{color:#e0525a}.chip.red[aria-pressed="true"]{color:var(--brass)}
 .step{display:grid;grid-template-columns:52px 1fr 52px;gap:8px;align-items:center}
-input[type=text],input[type=number]{width:100%;background:var(--felt);color:var(--chalk);border:1px solid var(--line);border-radius:8px;font:500 17px -apple-system,system-ui,sans-serif;padding:10px 12px;min-height:46px;-webkit-user-select:text;user-select:text}
+input[type=text],input[type=number],input[type=time],input[type=date]{width:100%;background:var(--felt);color:var(--chalk);border:1px solid var(--line);border-radius:8px;font:500 17px -apple-system,system-ui,sans-serif;padding:10px 12px;min-height:46px;-webkit-user-select:text;user-select:text}
 input[type=number]{text-align:center;font-size:22px}
 label.l{font-size:14px;color:var(--mute)}
 .rng{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center}
@@ -109,6 +109,7 @@ label.l{font-size:14px;color:var(--mute)}
         <button class="chip" type="button" data-fx="time">Temps</button>
         <button class="chip" type="button" data-fx="sms">SMS</button>
         <button class="chip" type="button" data-fx="card">Carte</button>
+        <button class="chip" type="button" data-fx="clock">Heure</button>
       </div>
     </div>
 
@@ -127,6 +128,15 @@ label.l{font-size:14px;color:var(--mute)}
         <button class="chip" type="button" data-mode="step">Cran par cran</button>
       </div>
       <div class="rng" id="durRow"><label for="duration">Durée du recul</label><output id="durOut"></output><input id="duration" type="range" min="2" max="20" step="1"></div>
+    </div>
+
+    <div class="grp" id="gClock" hidden>
+      <h2>L'heure devient…</h2>
+      <label class="l" for="clockT">Heure à afficher</label>
+      <input id="clockT" type="time" step="60">
+      <label class="check"><input id="clockUseD" type="checkbox">Changer aussi la date</label>
+      <input id="clockD" type="date" hidden aria-label="Date à afficher">
+      <p class="help">Modifiable même une fois l'heure affichée : l'écran suit tout de suite.</p>
     </div>
 
     <div class="grp" id="gSms" hidden>
@@ -154,13 +164,15 @@ label.l{font-size:14px;color:var(--mute)}
       <div class="chips" id="specChips">
         <button class="chip" type="button" data-c="JKC">Joker</button><button class="chip" type="button" data-c="JKB">Joker N&amp;B</button><button class="chip" type="button" data-c="BL">Blanche</button><button class="chip" type="button" data-c="BR">Dos rouge</button><button class="chip" type="button" data-c="BB">Dos bleu</button>
       </div>
+      <label class="check"><input id="direct" type="checkbox">Afficher dès que je choisis</label>
+      <p class="help" id="directHelp" hidden>Choisis la valeur puis la couleur : la carte apparaît, ou remplace celle qui est déjà affichée.</p>
       <label class="check"><input id="cardMorph" type="checkbox">Une secousse change la carte</label>
     </div>
 
     <div class="grp" id="gDelay">
       <h2>Délais</h2>
       <div class="rng"><label for="delay" id="delayLbl">Délai avant l'effet</label><output id="delayOut"></output><input id="delay" type="range" min="0" max="15" step="0.5"></div>
-      <div class="rng" id="delay2Row" hidden><label for="delay2">Délai avant la disparition</label><output id="delay2Out"></output><input id="delay2" type="range" min="0" max="15" step="0.5"></div>
+      <div class="rng" id="delay2Row" hidden><label for="delay2" id="delay2Lbl">Délai avant la disparition</label><output id="delay2Out"></output><input id="delay2" type="range" min="0" max="15" step="0.5"></div>
     </div>
 
     <p class="help" id="hint"></p>
@@ -176,9 +188,11 @@ label.l{font-size:14px;color:var(--mute)}
   var $ = function(s){ return document.querySelector(s); };
   var all = function(s){ return Array.prototype.slice.call(document.querySelectorAll(s)); };
   var KEY = 'marche-arriere-remote-pair';
+  var direct = false, dp = {r: null, s: null};
+  try { direct = localStorage.getItem('marche-arriere-remote-direct') === '1'; } catch(e){}
   var secret = null, conn = null, st = null, lastSeen = 0, net = 'connecting', slot = 1, patch = {}, patchT = 0;
   var pend = {}, toastT = 0, wl = null;
-  var DEF = {effect: 'time', minutes: 10, mode: 'auto', duration: 5, delay: 0, delay2: 0, smsFrom: 'Messages', smsText: '', smsSound: true, card: 'AS', card2: '7H', cardMorph: false};
+  var DEF = {effect: 'time', minutes: 10, mode: 'auto', duration: 5, delay: 0, delay2: 0, smsFrom: 'Messages', smsText: '', smsSound: true, card: 'AS', card2: '7H', cardMorph: false, clockT: '12:00', clockD: ''};
   var cfg = Object.assign({}, DEF);
 
   function clamp(v, a, b){ return Math.min(b, Math.max(a, v)); }
@@ -299,6 +313,7 @@ label.l{font-size:14px;color:var(--mute)}
     var p = st.ph, m = cfg.minutes;
     if (st.fx === 'time') return p === 'armed' ? 'Armé · ' + m + ' min à reculer' : p === 'busy' ? 'Recul en cours…' : p === 'partial' ? 'Recul partiel · il reste ' + st.left + ' min' : 'Terminé · réarme pour recommencer';
     if (st.fx === 'sms') return p === 'armed' ? 'Prêt · le SMS n\'est pas arrivé' : p === 'busy' ? 'Délai en cours…' : 'SMS affiché · réarme pour le retirer';
+    if (st.fx === 'clock') return p === 'armed' ? 'Armé · l\'heure passera à ' + cfg.clockT : p === 'busy' ? 'Changement en cours…' : 'Heure changée · touche pour rétablir';
     return p === 'armed' ? 'Carte cachée' : p === 'busy' ? 'Transition…' : 'Carte visible';
   }
   function setVal(el, v){ if (document.activeElement !== el && String(el.value) !== String(v)) el.value = v; }
@@ -312,9 +327,10 @@ label.l{font-size:14px;color:var(--mute)}
     if (patch.effect) fx = patch.effect;
     $('#phase').textContent = phaseText();
     pressed('#fxSeg .chip', function(b){ return b.dataset.fx === fx; });
-    $('#gTime').hidden = fx !== 'time'; $('#gSms').hidden = fx !== 'sms'; $('#gCard').hidden = fx !== 'card';
-    $('#delay2Row').hidden = fx !== 'card';
-    $('#delayLbl').textContent = fx === 'card' ? 'Délai avant l\'apparition' : fx === 'sms' ? 'Délai avant le message' : 'Délai avant le recul';
+    $('#gTime').hidden = fx !== 'time'; $('#gSms').hidden = fx !== 'sms'; $('#gCard').hidden = fx !== 'card'; $('#gClock').hidden = fx !== 'clock';
+    $('#delay2Row').hidden = fx !== 'card' && fx !== 'clock';
+    $('#delay2Lbl').textContent = fx === 'clock' ? 'Délai avant le retour' : 'Délai avant la disparition';
+    $('#delayLbl').textContent = fx === 'clock' ? 'Délai avant le changement' : fx === 'card' ? 'Délai avant l\'apparition' : fx === 'sms' ? 'Délai avant le message' : 'Délai avant le recul';
     /* temps */
     setVal($('#minutes'), cfg.minutes);
     pressed('#minChips .chip', function(b){ return +b.dataset.m === cfg.minutes; });
@@ -327,17 +343,19 @@ label.l{font-size:14px;color:var(--mute)}
     $('#slot2').hidden = !cfg.cardMorph; $('#slotSeg').style.display = cfg.cardMorph ? '' : 'none';
     pressed('#slotSeg .chip', function(b){ return +b.dataset.slot === slot; });
     var cur = pc(), std = !/^(BR|BB|BL|JKC|JKB)$/.test(cur);
-    pressed('#suitChips .chip', function(b){ return std && b.dataset.s === cur.slice(-1); });
-    pressed('#rankChips .chip', function(b){ return std && b.dataset.r === cur.slice(0, -1); });
+    pressed('#suitChips .chip', function(b){ return direct ? (dp.s ? b.dataset.s === dp.s : !dp.r && std && b.dataset.s === cur.slice(-1)) : std && b.dataset.s === cur.slice(-1); });
+    pressed('#rankChips .chip', function(b){ return direct ? (dp.r ? b.dataset.r === dp.r : !dp.s && std && b.dataset.r === cur.slice(0, -1)) : std && b.dataset.r === cur.slice(0, -1); });
+    setChk($('#direct'), direct); $('#directHelp').hidden = !direct; if (direct) $('#slotSeg').style.display = 'none';
+    setVal($('#clockT'), cfg.clockT); setChk($('#clockUseD'), !!cfg.clockD); $('#clockD').hidden = !cfg.clockD; setVal($('#clockD'), cfg.clockD || '');
     pressed('#specChips .chip', function(b){ return b.dataset.c === cur; });
-    $('#cardLabel').textContent = (cfg.cardMorph ? (slot === 2 ? 'Après secousse : ' : 'Au départ : ') : '') + cardName(cur);
+    $('#cardLabel').textContent = direct && (dp.r || dp.s) ? (dp.r ? 'Valeur ' + dp.r + ' · choisis la couleur' : 'Couleur choisie · choisis la valeur') : (cfg.cardMorph ? (slot === 2 ? 'Après secousse : ' : 'Au départ : ') : '') + cardName(cur);
     setChk($('#cardMorph'), cfg.cardMorph);
     /* délais */
     setVal($('#delay'), cfg.delay); $('#delayOut').textContent = secTxt(cfg.delay);
     setVal($('#delay2'), cfg.delay2); $('#delay2Out').textContent = secTxt(cfg.delay2);
     /* boutons d'action */
     var p = st && st.ph, down = st && st.run === false;
-    var lab = fx === 'time' ? (cfg.mode === 'step' ? 'Enlever une minute' : 'Reculer') : fx === 'sms' ? 'Faire arriver le SMS' : (p === 'on' ? 'Faire disparaître la carte' : 'Faire apparaître la carte');
+    var lab = fx === 'clock' ? (p === 'on' ? 'Rétablir l\'heure' : 'Changer l\'heure') : fx === 'time' ? (cfg.mode === 'step' ? 'Enlever une minute' : 'Reculer') : fx === 'sms' ? 'Faire arriver le SMS' : (p === 'on' ? 'Faire disparaître la carte' : 'Faire apparaître la carte');
     if (!$('#touch').dataset.st) $('#touch').textContent = lab; $('#touch').disabled = !!down;
     $('#rearm').disabled = !!down; $('#rearm').classList.toggle('hot', !!p && p !== 'armed' && p !== 'busy');
     $('#morph').hidden = !(fx === 'card' && cfg.cardMorph); $('#morph').disabled = !!down || p !== 'on';
@@ -350,7 +368,7 @@ label.l{font-size:14px;color:var(--mute)}
   function delayFor(k){
     if (k !== 'touch') return 0;
     var fx = patch.effect || (st && st.fx) || cfg.effect, p = st && st.fx === fx ? st.ph : 'armed';
-    var d = fx === 'card' && p === 'on' ? cfg.delay2 : cfg.delay;
+    var d = (fx === 'card' || fx === 'clock') && p === 'on' ? cfg.delay2 : cfg.delay;
     return d > 0 ? d : 0;
   }
   /* Le bouton reste enfoncé, la barre se remplit pendant le délai ; il se relâche quand l'ordre est confirmé ET que le délai est écoulé.
@@ -396,9 +414,40 @@ label.l{font-size:14px;color:var(--mute)}
   $('#slotSeg').addEventListener('click', function(e){ var b = e.target.closest('.chip'); if (b){ slot = +b.dataset.slot; render(); } });
   function pickCard(id){ set(slot === 2 && cfg.cardMorph ? 'card2' : 'card', id, true); }
   function isStd(c){ return !/^(BR|BB|BL|JKC|JKB)$/.test(c); }
-  $('#suitChips').addEventListener('click', function(e){ var b = e.target.closest('.chip'); if (b){ var c = pc(); pickCard((isStd(c) ? c.slice(0, -1) : 'A') + b.dataset.s); } });
-  $('#rankChips').addEventListener('click', function(e){ var b = e.target.closest('.chip'); if (b){ var c = pc(); pickCard(b.dataset.r + (isStd(c) ? c.slice(-1) : 'S')); } });
-  $('#specChips').addEventListener('click', function(e){ var b = e.target.closest('.chip'); if (b) pickCard(b.dataset.c); });
+  /* annonce directe : valeur + couleur (ou carte spéciale) et la carte apparaît tout de suite sur le téléphone de la salle */
+  function fire(id){
+    dp = {r: null, s: null}; cfg.card = id;
+    if (st && st.run === false){ toast('Lance le tour sur le téléphone de la salle', 2200); render(); return; }
+    cmd('show', {card: id}, {onack: function(){ toast('Carte affichée', 900); }, onfail: function(t){ toast(t, 2600); }});
+    buzz(); render();
+  }
+  $('#suitChips').addEventListener('click', function(e){
+    var b = e.target.closest('.chip'); if (!b) return;
+    if (direct){ dp.s = b.dataset.s; if (dp.r) fire(dp.r + dp.s); else render(); return; }
+    var c = pc(); pickCard((isStd(c) ? c.slice(0, -1) : 'A') + b.dataset.s);
+  });
+  $('#rankChips').addEventListener('click', function(e){
+    var b = e.target.closest('.chip'); if (!b) return;
+    if (direct){ dp.r = b.dataset.r; if (dp.s) fire(dp.r + dp.s); else render(); return; }
+    var c = pc(); pickCard(b.dataset.r + (isStd(c) ? c.slice(-1) : 'S'));
+  });
+  $('#specChips').addEventListener('click', function(e){
+    var b = e.target.closest('.chip'); if (!b) return;
+    if (direct) fire(b.dataset.c); else pickCard(b.dataset.c);
+  });
+  $('#direct').addEventListener('change', function(e){
+    direct = e.target.checked; dp = {r: null, s: null};
+    try { localStorage.setItem('marche-arriere-remote-direct', direct ? '1' : '0'); } catch(err){}
+    if (!direct) $('#slotSeg').style.display = '';
+    render();
+  });
+  /* « L'heure devient… » */
+  $('#clockT').addEventListener('input', function(e){ if (/^\d\d:\d\d$/.test(e.target.value)) set('clockT', e.target.value); });
+  $('#clockUseD').addEventListener('change', function(e){
+    if (e.target.checked){ var n = new Date(); set('clockD', n.getFullYear() + '-' + ('0' + (n.getMonth() + 1)).slice(-2) + '-' + ('0' + n.getDate()).slice(-2), true); }
+    else set('clockD', '', true);
+  });
+  $('#clockD').addEventListener('input', function(e){ if (/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)) set('clockD', e.target.value); });
   $('#forget').addEventListener('click', forget);
   $('#pairGo').addEventListener('click', function(){ pair($('#code').value); });
   if (navigator.clipboard && navigator.clipboard.readText){
