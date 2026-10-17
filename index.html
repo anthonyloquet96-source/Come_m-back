@@ -125,6 +125,15 @@ h2{font:700 19px/1.2 var(--f-display);margin:0 0 6px;display:flex;align-items:ce
 
 .launch{position:sticky;bottom:0;background:var(--felt);padding:14px 0 14px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:10px;margin-top:-4px}
 .launch p{margin:0;font:400 12px/1.5 var(--f-mono);color:var(--mute)}
+#go{position:relative;overflow:hidden;transition:transform .12s ease,filter .12s ease,box-shadow .12s ease;-webkit-tap-highlight-color:transparent}
+#go:not([disabled]):active,#go.press{transform:scale(.96);filter:brightness(.88);box-shadow:inset 0 3px 10px rgba(0,0,0,.35)}
+#go .rip{position:absolute;border-radius:50%;background:rgba(27,19,5,.28);transform:translate(-50%,-50%) scale(0);width:20px;height:20px;pointer-events:none;animation:goRip .55s ease-out forwards}
+@keyframes goRip{to{transform:translate(-50%,-50%) scale(26);opacity:0}}
+#stage.entering{animation:stageIn .45s ease-out both}
+@keyframes stageIn{from{opacity:0;transform:scale(1.03)}to{opacity:1;transform:none}}
+#launchPill{position:fixed;left:50%;top:max(18px,env(safe-area-inset-top,0px));transform:translate(-50%,-14px);z-index:30;display:flex;align-items:center;gap:8px;padding:9px 16px;border-radius:999px;background:rgba(18,41,31,.94);border:1px solid #3d8a63;color:#e8efe7;font:600 15px/1 var(--f-body);opacity:0;pointer-events:none;transition:opacity .25s ease,transform .25s ease}
+#launchPill.on{opacity:1;transform:translate(-50%,0)}
+#launchPill::before{content:"";width:9px;height:9px;border-radius:50%;background:#5fbf8a;box-shadow:0 0 0 4px rgba(95,191,138,.25)}
 
 /* scène */
 html.tour,html.tour body{background:#000!important;overflow:hidden;overscroll-behavior:none}
@@ -544,6 +553,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   <div class="zone r" id="zr"></div>
   <div id="notif" class="notif" aria-hidden="true"><div class="ic"><svg viewBox="0 0 24 24"><path fill="#fff" d="M12 3C6.5 3 2 6.6 2 11c0 2.3 1.2 4.4 3.2 5.8-.2 1.2-.8 2.4-1.7 3.4 1.9-.1 3.6-.8 4.8-1.7 1.1.3 2.4.5 3.7.5 5.5 0 10-3.6 10-8S17.5 3 12 3z"/></svg></div><div class="bd"><div class="tp"><span id="nFrom"></span><small>maintenant</small></div><div class="tx" id="nText"></div></div></div>
 </div>
+<div id="launchPill" role="status" aria-live="polite">Tour lancé</div>
 <div id="probe" aria-hidden="true" style="position:absolute;left:-9999px;top:0;width:1px;height:1px;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)"></div>
 
 <script src="relay.js"></script>
@@ -1780,7 +1790,28 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     ['pointercancel','pointerleave'].forEach(function(n){ el.addEventListener(n, clear); });
   }
 
-  $('#go').addEventListener('click', enter);
+  /* retour visuel du bouton « Lancer le tour » : enfoncement, onde, vibration, entrée en fondu, pastille « Tour lancé » */
+  (function(){
+    var go = $('#go'), pill = $('#launchPill'), pillT = 0;
+    go.addEventListener('pointerdown', function(e){
+      if (go.disabled) return;
+      var r = go.getBoundingClientRect(), d = document.createElement('span');
+      d.className = 'rip'; d.style.left = (e.clientX - r.left) + 'px'; d.style.top = (e.clientY - r.top) + 'px';
+      go.appendChild(d); setTimeout(function(){ if (d.parentNode) d.parentNode.removeChild(d); }, 650);
+      try { navigator.vibrate && navigator.vibrate(12); } catch(err){}
+    });
+    go.addEventListener('click', function(ev){
+      enter(ev);
+      if (!running){ return; }
+      stage.classList.remove('entering'); void stage.offsetWidth; stage.classList.add('entering');
+      setTimeout(function(){ stage.classList.remove('entering'); }, 600);
+      if (ev && ev.isTrusted){
+        clearTimeout(pillT); pill.classList.add('on');
+        pillT = setTimeout(function(){ pill.classList.remove('on'); }, 1400);
+      }
+    });
+    window.addEventListener('pagehide', function(){ pill.classList.remove('on'); });
+  })();
 
   /* gestes : un doigt = recul (après 120 ms, pour laisser arriver un 2e doigt), deux doigts vers le bas = réglages */
   (function(){
@@ -1852,7 +1883,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   }, 250);
 
   /* version et mode hors ligne */
-  var VERSION = '38', offlineReady = false;
+  var VERSION = '39', offlineReady = false;
   function buildNote(){ $('#buildNote').textContent = 'Version ' + VERSION + (offlineReady ? ' · prête hors ligne' : ''); }
   buildNote();
   try {
