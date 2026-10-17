@@ -279,6 +279,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
           <label><input type="radio" name="effect" value="time"><span><strong>Le temps recule</strong><small>L'heure est en avance puis revient à l'heure réelle.</small></span></label>
           <label><input type="radio" name="effect" value="sms"><span><strong>Notification SMS</strong><small>Heure réelle ; un message apparaît au toucher.</small></span></label>
           <label><input type="radio" name="effect" value="card"><span><strong>Carte en fond d'écran</strong><small>Première touche : la carte apparaît. Seconde : elle disparaît.</small></span></label>
+          <label><input type="radio" name="effect" value="clock"><span><strong>L'heure devient…</strong><small>Au toucher, l'heure (et la date) passe à la valeur choisie, puis continue de tourner.</small></span></label>
         </div>
       </div>
 
@@ -328,6 +329,16 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
         <div class="grp">
           <h3>Réception</h3>
           <label class="check"><input id="smsSound" type="checkbox">Petit son de réception</label>
+        </div>
+      </div>
+
+      <div id="clockBox" class="subs" hidden>
+        <div class="grp">
+          <h3>Heure à afficher</h3>
+          <input class="txt" id="clockT" type="time" step="60" aria-label="Heure à afficher">
+          <label class="check"><input id="clockUseD" type="checkbox">Changer aussi la date</label>
+          <input class="txt" id="clockD" type="date" aria-label="Date à afficher" hidden>
+          <p class="help">Depuis la télécommande, tu peux modifier l'heure et la date après coup, même quand elles sont déjà affichées : l'écran se met à jour tout de suite.</p>
         </div>
       </div>
 
@@ -569,7 +580,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     slab: 'Rockwell,"Roboto Slab","Courier New",serif',
     mono: 'ui-monospace,"SF Mono",Menlo,Consolas,monospace'
   };
-  var DEF = {minutes:10, effect:'time', card:'AS', cardX:50, cardY:50, cardS:88, cardIdx:true, cardClock:true, lockPortrait:true, lockInv:false, cardMotion:false, cardMotionK:1, cardMorph:false, cardFlick:true, card2:'7H', morphK:1, cardMotionInv:false, cardFade:'fade', delay2:0, smsFrom:'Messages', smsText:'le sept de cœur', smsY:60, smsX:50, smsS:1, smsSound:true, mode:'auto', duration:5, delay:0, autostart:true, bgMode:'mask', rawS:1, rawX:0, rawY:0, extra:0, layout:'1', debug:false, x:50, y:22.5, size:28, color:'#ffffff', showDate:true, fill:'mirror', font:'sf', weight:600, width:100, spacing:0, h12:false, zero:true, cstyle:'solid', copacity:100, shadow:false, dateFmt:'long', dateSize:20};
+  var DEF = {minutes:10, effect:'time', card:'AS', cardX:50, cardY:50, cardS:88, cardIdx:true, cardClock:true, lockPortrait:true, lockInv:false, cardMotion:false, cardMotionK:1, cardMorph:false, cardFlick:true, card2:'7H', clockT:'12:00', clockD:'', morphK:1, cardMotionInv:false, cardFade:'fade', delay2:0, smsFrom:'Messages', smsText:'le sept de cœur', smsY:60, smsX:50, smsS:1, smsSound:true, mode:'auto', duration:5, delay:0, autostart:true, bgMode:'mask', rawS:1, rawX:0, rawY:0, extra:0, layout:'1', debug:false, x:50, y:22.5, size:28, color:'#ffffff', showDate:true, fill:'mirror', font:'sf', weight:600, width:100, spacing:0, h12:false, zero:true, cstyle:'solid', copacity:100, shadow:false, dateFmt:'long', dateSize:20};
   var DEF_ZONES = [{x:0, y:12, w:100, h:17}];
   var KEY = 'marche-arriere-v4';
   var S = Object.assign({}, DEF, {zones: DEF_ZONES.map(function(z){ return Object.assign({}, z); })});
@@ -1132,8 +1143,10 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     ph.style.aspectRatio = String(a);
     var r = ph.getBoundingClientRect();
     pvR.fit(r.width, r.height);
-    pvR.render(new Date(Date.now() + (S.effect === 'time' ? S.minutes : 0) * 60000), S.effect === 'card' ? {card: {id: pc(), a: 1}} : null);
+    var ctg = S.effect === 'clock' ? clockTarget() : null;
+    pvR.render(ctg ? ctg.date : new Date(Date.now() + (S.effect === 'time' ? S.minutes : 0) * 60000), S.effect === 'card' ? {card: {id: pc(), a: 1}} : null);
     var now = new Date();
+    if (ctg) $('#live').innerHTML = 'Il est <b>' + hm(now) + '</b> · au toucher, l\'écran affichera <b>' + hm(ctg.date) + '</b>'; else
     if (S.effect !== 'time') $('#live').innerHTML = 'Il est <b>' + hm(now) + '</b> · l\'écran garde l\'heure réelle'; else
     $('#live').innerHTML = 'Il est <b>' + hm(now) + '</b> · l\'écran affichera <b>' + hm(new Date(now.getTime() + S.minutes * 60000)) + '</b>';
   }
@@ -1159,6 +1172,8 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     var sms = S.effect === 'sms';
     document.querySelectorAll('input[name=effect]').forEach(function(r){ r.checked = r.value === S.effect; });
     var card = S.effect === 'card', nonTime = S.effect !== 'time';
+    $('#clockBox').hidden = S.effect !== 'clock';
+    $('#clockT').value = S.clockT || ''; $('#clockUseD').checked = !!S.clockD; $('#clockD').hidden = !S.clockD; $('#clockD').value = S.clockD || '';
     $('#smsBox').hidden = !sms; $('#cardBox').hidden = !card; $('#secMin').hidden = nonTime; $('#grpMode').hidden = nonTime;
     if (card) syncCard();
     $('#smsFrom').value = S.smsFrom; $('#smsText').value = S.smsText;
@@ -1241,6 +1256,12 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   document.querySelectorAll('input[name=effect]').forEach(function(r){
     r.addEventListener('change', function(){ if (r.checked){ S.effect = r.value; save(); refreshUI(); } });
   });
+  $('#clockT').addEventListener('input', function(e){ if (/^\d\d:\d\d$/.test(e.target.value)){ S.clockT = e.target.value; save(); updatePreview(); } });
+  $('#clockUseD').addEventListener('change', function(e){
+    if (e.target.checked){ var n = new Date(); S.clockD = n.getFullYear() + '-' + pad(n.getMonth() + 1) + '-' + pad(n.getDate()); } else S.clockD = '';
+    save(); refreshUI();
+  });
+  $('#clockD').addEventListener('input', function(e){ if (/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)){ S.clockD = e.target.value; save(); updatePreview(); } });
   $('#smsFrom').addEventListener('input', function(e){ S.smsFrom = e.target.value; save(); });
   $('#smsText').addEventListener('input', function(e){ S.smsText = e.target.value; save(); });
   $('#placeNotif').addEventListener('click', function(){ openEditor('notif'); });
@@ -1532,7 +1553,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   /* ---------- scène ---------- */
   var running = false, busy = false, timer = null, offset = 0, wl = null;
 
-  var rafId = 0, rollPrev = 0, rollQ = 1, cardOn = false, cardA = 0, cardRaf = 0, cardCur = 'AS', morphQ = 0, morphRaf = 0, morphAt = 0, flickX = 0, flickY = 0, flickRaf = 0, stK = 1;
+  var rafId = 0, rollFrom = null, rollRaf = 0, clockOn = false, morphId = '', rollQ = 1, cardOn = false, cardA = 0, cardRaf = 0, cardCur = 'AS', morphQ = 0, morphRaf = 0, morphAt = 0, flickX = 0, flickY = 0, flickRaf = 0, stK = 1;
   function animCard(to, done){
     cancelAnimationFrame(cardRaf);
     var from = cardA, dur = S.cardFade === 'fade' ? 450 : 0, t0 = 0;
@@ -1571,7 +1592,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   function dragBegin(){
     if (!flickable()) return false;
     busy = true; cancelAnimationFrame(cardRaf); cancelAnimationFrame(morphRaf); cancelAnimationFrame(flickRaf);
-    if (morphQ > 0){ cardCur = S.card2; morphQ = 0; }
+    if (morphQ > 0){ cardCur = morphId; morphQ = 0; }
     return true;
   }
   function dragMove(dx, dy){ flickX = dx * stK; flickY = dy * stK; frame(); }
@@ -1610,16 +1631,18 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
       flickRaf = requestAnimationFrame(back);
     }
   }
-  function doMorph(){
-    if (!S.cardMorph || !cardOn || cardA < .9 || cardCur === S.card2 || morphQ > 0) return;
+  function doMorph(to){
+    var id2 = typeof to === 'string' ? to : S.card2, force = typeof to === 'string';
+    if ((!S.cardMorph && !force) || !cardOn || cardA < .9 || cardCur === id2 || morphQ > 0) return;
+    morphId = id2;
     var t0 = 0, dur = S.cardFade === 'fade' ? 220 : 0;
     try { navigator.vibrate && navigator.vibrate(30); } catch(e){}
-    if (!dur){ cardCur = S.card2; frame(); return; }
+    if (!dur){ cardCur = morphId; frame(); return; }
     function tick(now){
       if (!running) return;
       if (!t0) t0 = now;
       morphQ = Math.min(1, (now - t0) / dur);
-      if (morphQ >= 1){ cardCur = S.card2; morphQ = 0; frame(); return; }
+      if (morphQ >= 1){ cardCur = morphId; morphQ = 0; frame(); return; }
       frame(); morphRaf = requestAnimationFrame(tick);
     }
     morphQ = .001; morphRaf = requestAnimationFrame(tick);
@@ -1674,8 +1697,8 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   function frame(){
     if (!running) return;
     var o = S.debug ? {debug: debugInfo()} : {};
-    if (cardA > 0) o.card = {id: cardCur, id2: morphQ > 0 ? S.card2 : null, q: morphQ, a: cardA, dx: mo.x * stR.cw(), dy: mo.y * stR.cw(), fx: flickX, fy: flickY, rot: mo.r};
-    if (rollQ < 1) o.roll = {prev: new Date(Date.now() + rollPrev * 60000), q: rollQ};
+    if (cardA > 0) o.card = {id: cardCur, id2: morphQ > 0 ? morphId : null, q: morphQ, a: cardA, dx: mo.x * stR.cw(), dy: mo.y * stR.cw(), fx: flickX, fy: flickY, rot: mo.r};
+    if (rollQ < 1 && rollFrom) o.roll = {prev: rollFrom, q: rollQ};
     stR.render(shown(), o);
   }
   function fitStage(){ var s = layoutFull(stage, true); stR.fit(s.w, s.h); stK = stR.cw() / s.w; frame(); }
@@ -1697,6 +1720,41 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   if (window.visualViewport) window.visualViewport.addEventListener('resize', function(){ if (running && stage.style.visibility === 'hidden') return; refit(); });
 
   function startOff(){ return S.effect === 'time' ? S.minutes : 0; }
+  /* « L'heure devient… » : on décale l'heure affichée d'un nombre entier de minutes (jours compris), elle continue ensuite de tourner */
+  function clockTarget(now){
+    now = now || new Date();
+    var m = /^(\d\d):(\d\d)$/.exec(S.clockT || ''); if (!m) return null;
+    var t = new Date(now.getTime());
+    if (/^\d{4}-\d{2}-\d{2}$/.test(S.clockD || '')){ var p = S.clockD.split('-'); t.setFullYear(+p[0], +p[1] - 1, +p[2]); }
+    t.setHours(+m[1], +m[2], now.getSeconds(), now.getMilliseconds());
+    return {date: t, off: Math.round((t.getTime() - now.getTime()) / 60000)};
+  }
+  function jumpClock(on, done){
+    var tg = on ? clockTarget() : {off: 0};
+    if (!tg){ if (done) done(); return; }
+    cancelAnimationFrame(rollRaf);
+    rollFrom = shown(); offset = tg.off; clockOn = on; rollQ = 0;
+    var t0 = 0;
+    function tick(now){
+      if (!running){ rollQ = 1; if (done) done(); return; }
+      if (!t0) t0 = now;
+      rollQ = Math.min(1, (now - t0) / 650); frame();
+      if (rollQ < 1) rollRaf = requestAnimationFrame(tick); else if (done) done();
+    }
+    rollRaf = requestAnimationFrame(tick);
+  }
+  /* annonce directe d'une carte (télécommande) : elle apparaît tout de suite, ou remplace en fondu celle qui est déjà là */
+  function showCard(id, tries){
+    if (!running || S.effect !== 'card' || !rcCard(id)) return;
+    tries = tries || 0;
+    if (busy || morphQ > 0){ if (tries < 12) setTimeout(function(){ showCard(id, tries + 1); }, 150); return; }
+    S.card = id; save();
+    clearTimeout(timer); timer = null;
+    if (!cardOn || cardA < .05){
+      cancelAnimationFrame(morphRaf); cardCur = id; morphQ = 0; cardOn = true; busy = true;
+      animCard(1, function(){ busy = false; });
+    } else if (cardCur !== id){ doMorph(id); }
+  }
   var notif = $('#notif'), smsOn = false, actx = null;
   function ding(){
     try {
@@ -1724,6 +1782,14 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
       function go(){ timer = null; if (!running){ busy = false; return; } cardOn = on; if (on){ cancelAnimationFrame(morphRaf); cardCur = S.card; morphQ = 0; } animCard(on ? 1 : 0, function(){ busy = false; }); }
       busy = true;
       if (d > 0) timer = setTimeout(go, d); else go();
+      return;
+    }
+    if (S.effect === 'clock'){
+      if (busy) return;
+      var onC = !clockOn, dC = (onC ? S.delay : S.delay2) * 1000;
+      var goC = function(){ timer = null; if (!running){ busy = false; return; } jumpClock(onC, function(){ busy = false; }); };
+      busy = true;
+      if (dC > 0) timer = setTimeout(goC, dC); else goC();
       return;
     }
     if (S.effect === 'sms'){
@@ -1757,12 +1823,12 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     }
     rafId = requestAnimationFrame(tick);
   }
-  function rearm(){ resetCard(); cancelAnimationFrame(rafId); rafId = 0; rollQ = 1; clearTimeout(timer); timer = null; busy = false; hideSms(); offset = startOff(); frame(); }
+  function rearm(){ resetCard(); cancelAnimationFrame(rafId); rafId = 0; cancelAnimationFrame(rollRaf); clockOn = false; rollQ = 1; clearTimeout(timer); timer = null; busy = false; hideSms(); offset = startOff(); frame(); }
 
   function lock(){ try { var p = navigator.wakeLock && navigator.wakeLock.request('screen'); if (p) p.then(function(l){ wl = l; }).catch(function(){}); } catch(e){} }
   function enter(ev){
     if (!img) return;
-    save(); running = true; busy = false; hideSms(); resetCard(); offset = startOff();
+    save(); running = true; busy = false; clockOn = false; rollQ = 1; hideSms(); resetCard(); offset = startOff();
     setTourClass(true);
     setup.hidden = true; stage.hidden = false; window.scrollTo(0, 0);
     fitStage(); lock(); startMotion(!!(ev && ev.isTrusted));
@@ -1774,7 +1840,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     } catch(e){}
   }
   function leave(){
-    running = false; busy = false; clearTimeout(timer); timer = null; cancelAnimationFrame(rafId); rafId = 0; rollQ = 1; hideSms(); resetCard(); disableMotion();
+    running = false; busy = false; clockOn = false; cancelAnimationFrame(rollRaf); clearTimeout(timer); timer = null; cancelAnimationFrame(rafId); rafId = 0; rollQ = 1; hideSms(); resetCard(); disableMotion();
     try { if (wl) wl.release(); } catch(e){} wl = null;
     try { if (document.fullscreenElement) document.exitFullscreen(); } catch(e){}
     try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch(e){}
@@ -1883,7 +1949,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   }, 250);
 
   /* version et mode hors ligne */
-  var VERSION = '42', offlineReady = false;
+  var VERSION = '43', offlineReady = false;
   function buildNote(){ $('#buildNote').textContent = 'Version ' + VERSION + (offlineReady ? ' · prête hors ligne' : ''); }
   buildNote();
   try {
@@ -1908,7 +1974,14 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   var rcBool = function(v){ return typeof v === 'boolean' ? v : undefined; };
   var rcCard = function(v){ return typeof v === 'string' && CARD_RE.test(v) ? v : undefined; };
   var RC_SET = {
-    effect: function(v){ return v === 'time' || v === 'sms' || v === 'card' ? v : undefined; },
+    effect: function(v){ return v === 'time' || v === 'sms' || v === 'card' || v === 'clock' ? v : undefined; },
+    clockT: function(v){ return typeof v === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(v) ? v : undefined; },
+    clockD: function(v){
+      if (v === '') return '';
+      if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return undefined;
+      var p = v.split('-'), d = new Date(+p[0], +p[1] - 1, +p[2]);
+      return d.getFullYear() === +p[0] && d.getMonth() === +p[1] - 1 && d.getDate() === +p[2] ? v : undefined;
+    },
     minutes: rcInt(1, 720), mode: function(v){ return v === 'auto' || v === 'step' ? v : undefined; }, duration: rcInt(2, 20),
     delay: rcSec, delay2: rcSec,
     smsFrom: rcStr(40), smsText: rcStr(120), smsSound: rcBool,
@@ -1916,6 +1989,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   };
   function rcPhase(){
     if (S.effect === 'time'){ if (offset <= 0) return 'done'; if (busy) return 'busy'; return offset === S.minutes ? 'armed' : 'partial'; }
+    if (S.effect === 'clock') return busy ? 'busy' : clockOn ? 'on' : 'armed';
     if (S.effect === 'sms') return smsOn ? 'on' : busy ? 'busy' : 'armed';
     return busy ? 'busy' : cardOn ? 'on' : 'armed';
   }
@@ -1930,7 +2004,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   function rcApply(set){
     if (!set || typeof set !== 'object') return;
     var untouched = running && !busy && !smsOn && !cardOn && cardA === 0 && offset === startOff();
-    var fx = S.effect, mn = S.minutes, ch = false;
+    var fx = S.effect, mn = S.minutes, ch = false, ct0 = S.clockT + '|' + S.clockD;
     Object.keys(RC_SET).forEach(function(k){
       if (!Object.prototype.hasOwnProperty.call(set, k)) return;
       var v = RC_SET[k](set[k]);
@@ -1939,7 +2013,10 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     if (!ch) return;
     save();
     /* changer d'effet réarme toujours ; changer les minutes ne réarme que si rien n'a encore été joué */
-    if (running){ if (S.effect !== fx || (untouched && S.minutes !== mn)) rearm(); }
+    if (running){
+      if (S.effect !== fx || (untouched && S.minutes !== mn)) rearm();
+      else if (S.effect === 'clock' && clockOn && ct0 !== S.clockT + '|' + S.clockD && !busy) jumpClock(true);
+    }
     else refreshUI();
   }
   function rcHandle(m){
@@ -1950,6 +2027,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
       case 'touch': if (running) rewind(); break;
       case 'rearm': if (running) rearm(); break;
       case 'morph': if (running) doMorph(); break;
+      case 'show': if (running && typeof m.card === 'string') showCard(m.card.slice(0, 4)); break;
       default: return;
     }
     rcReply(typeof m.id === 'string' ? m.id.slice(0, 16) : undefined);
