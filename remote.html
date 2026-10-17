@@ -32,7 +32,7 @@ h1{margin:4px 0 0;font:700 20px/1.2 -apple-system,system-ui,sans-serif}
 .btn.ghost{border-color:var(--line);color:var(--chalk)}
 .btn.hot{background:rgba(224,169,62,.14)}
 .btn[disabled]{opacity:.4}
-.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row2{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
 .grp{display:flex;flex-direction:column;gap:10px;padding:14px;border:1px solid var(--line);border-radius:10px;background:var(--felt-2)}
 .grp>h2{margin:0;font:600 12px/1.2 ui-monospace,Menlo,monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--brass)}
 .seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:6px}
@@ -61,11 +61,19 @@ label.l{font-size:14px;color:var(--mute)}
   <!-- jumelage -->
   <section id="pair" hidden>
     <h1>Télécommande</h1>
-    <p class="lede" style="margin:6px 0 14px">Saisis le code affiché dans l'app, à l'étape « Télécommande ». Une seule fois.</p>
+    <p class="lede" style="margin:6px 0 14px">Cette page pilote le téléphone posé en salle. Il suffit de la relier une seule fois.</p>
     <div class="grp">
-      <label class="l" for="code">Code de jumelage</label>
+      <h2>Le plus simple</h2>
+      <p class="help" style="color:var(--chalk)">Sur le téléphone de la salle : réglages → <strong>Télécommande</strong>, puis scanne le QR code avec l'appareil photo de <em>ce</em> téléphone.</p>
+    </div>
+    <div class="grp" style="margin-top:12px">
+      <h2>Ou avec le code</h2>
+      <label class="l" for="code">Code affiché dans l'app</label>
       <input id="code" class="code" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXXX-XXXXX-XXXXX-XXXXX" maxlength="30">
-      <button class="btn solid" id="pairGo" type="button" style="min-height:56px;font-size:17px">Se connecter</button>
+      <div class="row2">
+        <button class="btn ghost" id="pairPaste" type="button" hidden>Coller</button>
+        <button class="btn solid" id="pairGo" type="button" style="min-height:50px;font-size:17px;border-radius:8px">Se connecter</button>
+      </div>
       <p class="help" id="pairMsg"></p>
     </div>
   </section>
@@ -322,6 +330,12 @@ label.l{font-size:14px;color:var(--mute)}
   $('#specChips').addEventListener('click', function(e){ var b = e.target.closest('.chip'); if (b) pickCard(b.dataset.c); });
   $('#forget').addEventListener('click', forget);
   $('#pairGo').addEventListener('click', function(){ pair($('#code').value); });
+  if (navigator.clipboard && navigator.clipboard.readText){
+    $('#pairPaste').hidden = false;
+    $('#pairPaste').addEventListener('click', function(){
+      navigator.clipboard.readText().then(function(t){ $('#code').value = t; if (!pair(t)) $('#code').focus(); }).catch(function(){ $('#pairMsg').textContent = 'Colle le code à la main dans le champ.'; });
+    });
+  }
   $('#code').addEventListener('keydown', function(e){ if (e.key === 'Enter') pair(e.target.value); });
   $('#code').addEventListener('input', function(e){
     var raw = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
