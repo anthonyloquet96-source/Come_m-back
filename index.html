@@ -1553,7 +1553,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   /* ---------- scène ---------- */
   var running = false, busy = false, timer = null, offset = 0, wl = null;
 
-  var rafId = 0, rollFrom = null, rollRaf = 0, clockOn = false, morphId = '', rollQ = 1, cardOn = false, cardA = 0, cardRaf = 0, cardCur = 'AS', morphQ = 0, morphRaf = 0, morphAt = 0, flickX = 0, flickY = 0, flickRaf = 0, stK = 1;
+  var rafId = 0, rollFrom = null, rollRaf = 0, clk = null, clockOn = false, morphId = '', rollQ = 1, cardOn = false, cardA = 0, cardRaf = 0, cardCur = 'AS', morphQ = 0, morphRaf = 0, morphAt = 0, flickX = 0, flickY = 0, flickRaf = 0, stK = 1;
   function animCard(to, done){
     cancelAnimationFrame(cardRaf);
     var from = cardA, dur = S.cardFade === 'fade' ? 450 : 0, t0 = 0;
@@ -1698,8 +1698,13 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     if (!running) return;
     var o = S.debug ? {debug: debugInfo()} : {};
     if (cardA > 0) o.card = {id: cardCur, id2: morphQ > 0 ? morphId : null, q: morphQ, a: cardA, dx: mo.x * stR.cw(), dy: mo.y * stR.cw(), fx: flickX, fy: flickY, rot: mo.r};
-    if (rollQ < 1 && rollFrom) o.roll = {prev: rollFrom, q: rollQ};
-    stR.render(shown(), o);
+    var sd = shown();
+    if (clk){
+      /* l'heure défile : v = décalage en minutes, fractionnaire ; on fond la minute b vers la minute b+1 selon la partie décimale */
+      var b = Math.floor(clk.v), nw = Date.now();
+      sd = new Date(nw + (b + 1) * 60000); o.roll = {prev: new Date(nw + b * 60000), q: clk.v - b};
+    }
+    stR.render(sd, o);
   }
   function fitStage(){ var s = layoutFull(stage, true); stR.fit(s.w, s.h); stK = stR.cw() / s.w; frame(); }
   function refit(){ if (running) fitStage(); else if (ed.open) fitEd(); }
@@ -1733,13 +1738,19 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     var tg = on ? clockTarget() : {off: 0};
     if (!tg){ if (done) done(); return; }
     cancelAnimationFrame(rollRaf);
-    rollFrom = shown(); offset = tg.off; clockOn = on; rollQ = 0;
-    var t0 = 0;
+    var from = clk ? clk.v : offset, to = tg.off, dist = Math.abs(to - from);
+    clockOn = on;
+    if (dist < 1){ clk = null; offset = to; frame(); if (done) done(); return; }
+    /* durée : de 1 s (quelques minutes) à 3,8 s (plusieurs jours) ; départ vif, arrivée qui ralentit jusqu'à l'heure visée */
+    var dur = Math.min(3800, 1000 + Math.log10(1 + dist) * 800), t0 = 0;
+    clk = {v: from};
     function tick(now){
-      if (!running){ rollQ = 1; if (done) done(); return; }
+      if (!running){ clk = null; offset = to; if (done) done(); return; }
       if (!t0) t0 = now;
-      rollQ = Math.min(1, (now - t0) / 650); frame();
-      if (rollQ < 1) rollRaf = requestAnimationFrame(tick); else if (done) done();
+      var t = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - t, 3);
+      clk.v = from + (to - from) * e; frame();
+      if (t < 1) rollRaf = requestAnimationFrame(tick);
+      else { clk = null; offset = to; frame(); if (done) done(); }
     }
     rollRaf = requestAnimationFrame(tick);
   }
@@ -1823,12 +1834,12 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     }
     rafId = requestAnimationFrame(tick);
   }
-  function rearm(){ resetCard(); cancelAnimationFrame(rafId); rafId = 0; cancelAnimationFrame(rollRaf); clockOn = false; rollQ = 1; clearTimeout(timer); timer = null; busy = false; hideSms(); offset = startOff(); frame(); }
+  function rearm(){ resetCard(); cancelAnimationFrame(rafId); rafId = 0; cancelAnimationFrame(rollRaf); clk = null; clockOn = false; rollQ = 1; clearTimeout(timer); timer = null; busy = false; hideSms(); offset = startOff(); frame(); }
 
   function lock(){ try { var p = navigator.wakeLock && navigator.wakeLock.request('screen'); if (p) p.then(function(l){ wl = l; }).catch(function(){}); } catch(e){} }
   function enter(ev){
     if (!img) return;
-    save(); running = true; busy = false; clockOn = false; rollQ = 1; hideSms(); resetCard(); offset = startOff();
+    save(); running = true; busy = false; clockOn = false; clk = null; rollQ = 1; hideSms(); resetCard(); offset = startOff();
     setTourClass(true);
     setup.hidden = true; stage.hidden = false; window.scrollTo(0, 0);
     fitStage(); lock(); startMotion(!!(ev && ev.isTrusted));
@@ -1840,7 +1851,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     } catch(e){}
   }
   function leave(){
-    running = false; busy = false; clockOn = false; cancelAnimationFrame(rollRaf); clearTimeout(timer); timer = null; cancelAnimationFrame(rafId); rafId = 0; rollQ = 1; hideSms(); resetCard(); disableMotion();
+    running = false; busy = false; clockOn = false; clk = null; cancelAnimationFrame(rollRaf); clearTimeout(timer); timer = null; cancelAnimationFrame(rafId); rafId = 0; rollQ = 1; hideSms(); resetCard(); disableMotion();
     try { if (wl) wl.release(); } catch(e){} wl = null;
     try { if (document.fullscreenElement) document.exitFullscreen(); } catch(e){}
     try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch(e){}
@@ -1949,7 +1960,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   }, 250);
 
   /* version et mode hors ligne */
-  var VERSION = '43', offlineReady = false;
+  var VERSION = '44', offlineReady = false;
   function buildNote(){ $('#buildNote').textContent = 'Version ' + VERSION + (offlineReady ? ' · prête hors ligne' : ''); }
   buildNote();
   try {
