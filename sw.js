@@ -1,6 +1,6 @@
 /* Marche Arrière : mode hors ligne. Réseau d'abord (pour recevoir les mises à jour), copie locale si pas de réseau. */
-var CACHE = 'marche-arriere-v36';
-var CORE = ['./', './index.html', './apple-touch-icon.png', './icon-512.png', './manifest.webmanifest'];
+var CACHE = 'marche-arriere-v37';
+var CORE = ['./', './index.html', './relay.js', './remote.html', './remote.webmanifest', './apple-touch-icon.png', './icon-512.png', './manifest.webmanifest'];
 
 self.addEventListener('install', function(e){
   e.waitUntil(caches.open(CACHE).then(function(c){ return c.addAll(CORE); }).then(function(){ return self.skipWaiting(); }));
@@ -16,6 +16,8 @@ self.addEventListener('fetch', function(e){
   var req = e.request;
   if (req.method !== 'GET') return;
   var url = new URL(req.url);
+  /* le relais de télécommande (flux SSE vers un autre domaine) ne passe jamais par le cache */
+  if (url.origin !== self.location.origin) return;
   e.respondWith((function(){
     var net = fetch(req, {cache: 'no-cache'}).then(function(res){
       if (res && res.ok && url.origin === self.location.origin){

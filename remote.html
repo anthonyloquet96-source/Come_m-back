@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Télécommande">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0b1c16">
+<link rel="manifest" href="remote.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Télécommande</title>
+<style>
+:root{--felt:#0b1c16;--felt-2:#12291f;--line:#25463a;--chalk:#e8efe7;--mute:#8ba598;--brass:#e0a93e;--brass-ink:#1b1305;--ok:#5fbf8a;--warn:#e0a93e;--bad:#e0525a;color-scheme:dark}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+html,body{margin:0;background:var(--felt);color:var(--chalk);font:16px/1.45 -apple-system,"SF Pro Text","Helvetica Neue",system-ui,sans-serif}
+body{padding:max(12px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) max(18px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left));min-height:100vh;touch-action:manipulation;-webkit-user-select:none;user-select:none}
+main{max-width:480px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+h1{margin:4px 0 0;font:700 20px/1.2 -apple-system,system-ui,sans-serif}
+.lede,.help{margin:0;color:var(--mute);font-size:14px}
+.bar{display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--felt-2);font-size:14px;cursor:pointer}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--mute);flex:none}
+.dot.ok{background:var(--ok)}.dot.warn{background:var(--warn)}.dot.bad{background:var(--bad)}
+.bar span.txt{flex:1;min-width:0}
+.phase{margin:0;text-align:center;font:600 15px/1.3 -apple-system,system-ui,sans-serif;color:var(--brass);min-height:20px}
+.btn{appearance:none;border:1.5px solid var(--brass);background:transparent;color:var(--brass);font:600 16px/1 -apple-system,system-ui,sans-serif;padding:14px 16px;border-radius:8px;min-height:50px;cursor:pointer;width:100%}
+.btn.solid{background:var(--brass);color:var(--brass-ink);font-size:20px;min-height:84px;border-radius:12px}
+.btn.solid:active{filter:brightness(.92)}
+.btn.ghost{border-color:var(--line);color:var(--chalk)}
+.btn.hot{background:rgba(224,169,62,.14)}
+.btn[disabled]{opacity:.4}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grp{display:flex;flex-direction:column;gap:10px;padding:14px;border:1px solid var(--line);border-radius:10px;background:var(--felt-2)}
+.grp>h2{margin:0;font:600 12px/1.2 ui-monospace,Menlo,monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--brass)}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:6px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{appearance:none;border:1px solid var(--line);background:var(--felt);color:var(--chalk);font:500 15px/1 -apple-system,system-ui,sans-serif;min-height:42px;min-width:42px;padding:8px 12px;border-radius:8px;cursor:pointer}
+.chip[aria-pressed="true"]{border-color:var(--brass);color:var(--brass);background:rgba(224,169,62,.12)}
+.chip.red{color:#e0525a}.chip.red[aria-pressed="true"]{color:var(--brass)}
+.step{display:grid;grid-template-columns:52px 1fr 52px;gap:8px;align-items:center}
+input[type=text],input[type=number]{width:100%;background:var(--felt);color:var(--chalk);border:1px solid var(--line);border-radius:8px;font:500 17px -apple-system,system-ui,sans-serif;padding:10px 12px;min-height:46px;-webkit-user-select:text;user-select:text}
+input[type=number]{text-align:center;font-size:22px}
+label.l{font-size:14px;color:var(--mute)}
+.rng{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center}
+.rng label{font-size:14px;color:var(--mute)}.rng output{font:500 14px ui-monospace,Menlo,monospace;color:var(--chalk)}
+.rng input{grid-column:1/-1;width:100%;accent-color:var(--brass)}
+.check{display:flex;gap:10px;align-items:center;font-size:15px}
+.check input{width:22px;height:22px;accent-color:var(--brass)}
+.toast{position:fixed;left:50%;bottom:max(18px,env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--felt-2);border:1px solid var(--line);color:var(--chalk);padding:9px 14px;border-radius:20px;font-size:14px;opacity:0;transition:opacity .15s;pointer-events:none;max-width:90vw;text-align:center}
+.toast.on{opacity:1}
+.foot{text-align:center;padding:6px 0 2px}
+.linkbtn{appearance:none;background:none;border:0;color:var(--mute);font:14px -apple-system,system-ui,sans-serif;text-decoration:underline;padding:10px;cursor:pointer}
+.code{letter-spacing:.08em;text-transform:uppercase;font-family:ui-monospace,Menlo,monospace;text-align:center}
+</style>
+</head>
+<body>
+<main>
+  <!-- jumelage -->
+  <section id="pair" hidden>
+    <h1>Télécommande</h1>
+    <p class="lede" style="margin:6px 0 14px">Saisis le code affiché dans l'app, à l'étape « Télécommande ». Une seule fois.</p>
+    <div class="grp">
+      <label class="l" for="code">Code de jumelage</label>
+      <input id="code" class="code" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXXX-XXXXX-XXXXX-XXXXX" maxlength="30">
+      <button class="btn solid" id="pairGo" type="button" style="min-height:56px;font-size:17px">Se connecter</button>
+      <p class="help" id="pairMsg"></p>
+    </div>
+  </section>
+
+  <!-- pilotage -->
+  <section id="ctl" hidden style="display:flex;flex-direction:column;gap:12px">
+    <div class="bar" id="bar" role="button" aria-label="Tester la liaison"><span class="dot" id="dot"></span><span class="txt" id="barTxt">Connexion…</span></div>
+    <p class="phase" id="phase"></p>
+
+    <button class="btn solid" id="touch" type="button">Toucher</button>
+    <div class="row2">
+      <button class="btn ghost" id="rearm" type="button">Réarmer</button>
+      <button class="btn ghost" id="morph" type="button" hidden>Secousse</button>
+    </div>
+
+    <div class="grp">
+      <h2>Effet</h2>
+      <div class="seg" id="fxSeg">
+        <button class="chip" type="button" data-fx="time">Temps</button>
+        <button class="chip" type="button" data-fx="sms">SMS</button>
+        <button class="chip" type="button" data-fx="card">Carte</button>
+      </div>
+    </div>
+
+    <div class="grp" id="gTime" hidden>
+      <h2>Le temps recule</h2>
+      <div class="step">
+        <button class="chip" type="button" id="minus" aria-label="Une minute de moins">−</button>
+        <input id="minutes" type="number" inputmode="numeric" min="1" max="720" aria-label="Minutes à reculer">
+        <button class="chip" type="button" id="plus" aria-label="Une minute de plus">+</button>
+      </div>
+      <div class="chips" id="minChips">
+        <button class="chip" type="button" data-m="5">5</button><button class="chip" type="button" data-m="10">10</button><button class="chip" type="button" data-m="15">15</button><button class="chip" type="button" data-m="30">30</button><button class="chip" type="button" data-m="60">60</button>
+      </div>
+      <div class="seg" id="modeSeg">
+        <button class="chip" type="button" data-mode="auto">Continu</button>
+        <button class="chip" type="button" data-mode="step">Cran par cran</button>
+      </div>
+      <div class="rng" id="durRow"><label for="duration">Durée du recul</label><output id="durOut"></output><input id="duration" type="range" min="2" max="20" step="1"></div>
+    </div>
+
+    <div class="grp" id="gSms" hidden>
+      <h2>Notification SMS</h2>
+      <label class="l" for="smsFrom">Expéditeur</label>
+      <input id="smsFrom" type="text" maxlength="40" autocomplete="off" autocapitalize="sentences">
+      <label class="l" for="smsText">Message</label>
+      <input id="smsText" type="text" maxlength="120" autocomplete="off" autocapitalize="sentences">
+      <label class="check"><input id="smsSound" type="checkbox">Petit son à la réception</label>
+    </div>
+
+    <div class="grp" id="gCard" hidden>
+      <h2>Carte</h2>
+      <div class="seg" id="slotSeg">
+        <button class="chip" type="button" data-slot="1">Carte de départ</button>
+        <button class="chip" type="button" data-slot="2" id="slot2">Après secousse</button>
+      </div>
+      <p class="help" id="cardLabel" style="color:var(--chalk);font-size:16px"></p>
+      <div class="chips" id="suitChips">
+        <button class="chip" type="button" data-s="S" style="font-size:22px">♠&#xFE0E;</button><button class="chip red" type="button" data-s="H" style="font-size:22px">♥&#xFE0E;</button><button class="chip red" type="button" data-s="D" style="font-size:22px">♦&#xFE0E;</button><button class="chip" type="button" data-s="C" style="font-size:22px">♣&#xFE0E;</button>
+      </div>
+      <div class="chips" id="rankChips">
+        <button class="chip" type="button" data-r="A">A</button><button class="chip" type="button" data-r="2">2</button><button class="chip" type="button" data-r="3">3</button><button class="chip" type="button" data-r="4">4</button><button class="chip" type="button" data-r="5">5</button><button class="chip" type="button" data-r="6">6</button><button class="chip" type="button" data-r="7">7</button><button class="chip" type="button" data-r="8">8</button><button class="chip" type="button" data-r="9">9</button><button class="chip" type="button" data-r="10">10</button><button class="chip" type="button" data-r="J">V</button><button class="chip" type="button" data-r="Q">D</button><button class="chip" type="button" data-r="K">R</button>
+      </div>
+      <div class="chips" id="specChips">
+        <button class="chip" type="button" data-c="JKC">Joker</button><button class="chip" type="button" data-c="JKB">Joker N&amp;B</button><button class="chip" type="button" data-c="BL">Blanche</button><button class="chip" type="button" data-c="BR">Dos rouge</button><button class="chip" type="button" data-c="BB">Dos bleu</button>
+      </div>
+      <label class="check"><input id="cardMorph" type="checkbox">Une secousse change la carte</label>
+    </div>
+
+    <div class="grp" id="gDelay">
+      <h2>Délais</h2>
+      <div class="rng"><label for="delay" id="delayLbl">Délai avant l'effet</label><output id="delayOut"></output><input id="delay" type="range" min="0" max="15" step="0.5"></div>
+      <div class="rng" id="delay2Row" hidden><label for="delay2">Délai avant la disparition</label><output id="delay2Out"></output><input id="delay2" type="range" min="0" max="15" step="0.5"></div>
+    </div>
+
+    <p class="help" id="hint"></p>
+    <div class="foot"><button class="linkbtn" id="forget" type="button">Oublier ce jumelage</button></div>
+  </section>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="relay.js"></script>
+<script>
+(function(){
+  'use strict';
+  var $ = function(s){ return document.querySelector(s); };
+  var all = function(s){ return Array.prototype.slice.call(document.querySelectorAll(s)); };
+  var KEY = 'marche-arriere-remote-pair';
+  var secret = null, conn = null, st = null, lastSeen = 0, net = 'connecting', slot = 1, patch = {}, patchT = 0;
+  var pend = {}, toastT = 0, wl = null;
+  var DEF = {effect: 'time', minutes: 10, mode: 'auto', duration: 5, delay: 0, delay2: 0, smsFrom: 'Messages', smsText: '', smsSound: true, card: 'AS', card2: '7H', cardMorph: false};
+  var cfg = Object.assign({}, DEF);
+
+  function clamp(v, a, b){ return Math.min(b, Math.max(a, v)); }
+  function toast(t, ms){ var el = $('#toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(function(){ el.classList.remove('on'); }, ms || 1600); }
+  function buzz(){ try { navigator.vibrate && navigator.vibrate(15); } catch(e){} }
+
+  /* ---------- jumelage ---------- */
+  function load(){ try { return Relay.normalize(localStorage.getItem(KEY)); } catch(e){ return null; } }
+  function store(c){ try { localStorage.setItem(KEY, c); } catch(e){} }
+  function pair(code){
+    var c = Relay.normalize(code);
+    if (!c){ $('#pairMsg').textContent = 'Code invalide : 20 signes, lettres et chiffres (sans 0, O, 1, I, L).'; return false; }
+    store(c); secret = c; $('#pairMsg').textContent = ''; start(); return true;
+  }
+  function forget(){
+    if (!confirm('Oublier ce jumelage ?')) return;
+    try { localStorage.removeItem(KEY); } catch(e){}
+    if (conn) conn.close(); conn = null; secret = null; st = null; lastSeen = 0; show();
+  }
+  function show(){
+    $('#pair').hidden = !!secret; $('#ctl').hidden = !secret;
+    if (!secret) $('#code').focus && setTimeout(function(){ try { $('#code').focus(); } catch(e){} }, 50);
+  }
+
+  /* ---------- liaison ---------- */
+  function start(){
+    show();
+    if (!window.Relay || !Relay.supported()){ $('#barTxt').textContent = 'Navigateur non compatible'; setDot('bad'); return; }
+    if (conn) conn.close();
+    var c = Relay.open(secret, 'remote'); conn = c; net = 'connecting'; bar();
+    c.onstatus = function(s){ if (conn !== c) return; net = s; bar(); if (s === 'online') ping(); };
+    c.onmessage = function(m){ if (conn === c) onMsg(m); };
+    wake();
+  }
+  function wake(){ try { if (navigator.wakeLock && !wl) navigator.wakeLock.request('screen').then(function(l){ wl = l; l.addEventListener('release', function(){ wl = null; }); }).catch(function(){}); } catch(e){} }
+  function id(){ return Math.random().toString(36).slice(2, 10); }
+  function ping(){ if (conn) conn.send({k: 'hello'}); }
+  /* envoie un ordre ; confirme « reçu » quand le téléphone répond, sinon le dit clairement */
+  function cmd(k, extra, label){
+    if (!conn){ toast('Pas de liaison'); return; }
+    var i = id(), m = Object.assign({k: k, id: i}, extra || {});
+    pend[i] = {label: label || '', t: setTimeout(function(){ if (pend[i]){ delete pend[i]; toast('Pas de réponse du téléphone', 2600); } }, 6000)};
+    conn.send(m).then(function(ok){ if (!ok && pend[i]){ clearTimeout(pend[i].t); delete pend[i]; toast('Non envoyé : pas de réseau ?', 2600); } });
+  }
+  function onMsg(m){
+    if (m.k !== 'state') return;
+    st = m; lastSeen = Date.now();
+    if (m.cfg) cfg = Object.assign({}, cfg, m.cfg, patch);
+    if (m.re && pend[m.re]){ clearTimeout(pend[m.re].t); var l = pend[m.re].label; delete pend[m.re]; toast('✓ ' + (l || 'Reçu'), 1100); }
+    render(); bar();
+  }
+
+  /* réglages : envoyés groupés, appliqués tout de suite côté téléphone ; un changement d'effet réarme */
+  function set(k, v, now){
+    cfg[k] = v; patch[k] = v; render();
+    clearTimeout(patchT);
+    patchT = setTimeout(flush, now ? 0 : 350);
+  }
+  function flush(){
+    clearTimeout(patchT); patchT = 0;
+    var p = patch; patch = {};
+    if (Object.keys(p).length) cmd('cfg', {set: p}, 'Réglé');
+  }
+
+  /* ---------- affichage ---------- */
+  function setDot(c){ $('#dot').className = 'dot ' + c; }
+  function bar(){
+    if (!secret) return;
+    var age = lastSeen ? Math.round((Date.now() - lastSeen) / 1000) : -1;
+    var ago = age < 0 ? '' : age < 90 ? age + ' s' : Math.round(age / 60) + ' min';
+    var t, c;
+    if (net === 'offline'){ t = 'Relais hors ligne · nouvel essai…'; c = 'bad'; }
+    else if (net === 'connecting' && !lastSeen){ t = 'Connexion…'; c = 'warn'; }
+    else if (!lastSeen){ t = 'Le téléphone ne répond pas · touche pour tester'; c = 'warn'; }
+    else if (age > 300){ t = 'Téléphone muet depuis ' + ago + ' · touche pour tester'; c = 'warn'; }
+    else if (st && st.run === false){ t = 'Téléphone joint · pas en mode tour'; c = 'warn'; }
+    else { t = 'Téléphone prêt · signe il y a ' + ago; c = 'ok'; }
+    $('#barTxt').textContent = t; setDot(c);
+  }
+  function cardName(c){
+    var n = {BR: 'Dos rouge', BB: 'Dos bleu', BL: 'Carte blanche', JKC: 'Joker couleur', JKB: 'Joker noir et blanc'};
+    if (n[c]) return n[c];
+    var N = {S: 'pique', H: 'cœur', D: 'carreau', C: 'trèfle'}, R = {A: 'As', J: 'Valet', Q: 'Dame', K: 'Roi'};
+    var r = c.slice(0, -1), s = c.slice(-1);
+    return (R[r] || r) + ' de ' + N[s];
+  }
+  function phaseText(){
+    if (!st) return '';
+    if (st.run === false) return 'Lance le tour sur le téléphone de la salle';
+    var p = st.ph, m = cfg.minutes;
+    if (st.fx === 'time') return p === 'armed' ? 'Armé · ' + m + ' min à reculer' : p === 'busy' ? 'Recul en cours…' : p === 'partial' ? 'Recul partiel · il reste ' + st.left + ' min' : 'Terminé · réarme pour recommencer';
+    if (st.fx === 'sms') return p === 'armed' ? 'Prêt · le SMS n\'est pas arrivé' : p === 'busy' ? 'Délai en cours…' : 'SMS affiché · réarme pour le retirer';
+    return p === 'armed' ? 'Carte cachée' : p === 'busy' ? 'Transition…' : 'Carte visible';
+  }
+  function setVal(el, v){ if (document.activeElement !== el && String(el.value) !== String(v)) el.value = v; }
+  function setChk(el, v){ if (el.checked !== !!v) el.checked = !!v; }
+  function pressed(sel, test){ all(sel).forEach(function(b){ b.setAttribute('aria-pressed', String(!!test(b))); }); }
+  function secTxt(v){ return v > 0 ? v + ' s' : 'Aucun'; }
+  function pc(){ return slot === 2 && cfg.cardMorph ? cfg.card2 : cfg.card; }
+  function render(){
+    if (!secret) return;
+    var fx = (st && st.fx) || cfg.effect;
+    if (patch.effect) fx = patch.effect;
+    $('#phase').textContent = phaseText();
+    pressed('#fxSeg .chip', function(b){ return b.dataset.fx === fx; });
+    $('#gTime').hidden = fx !== 'time'; $('#gSms').hidden = fx !== 'sms'; $('#gCard').hidden = fx !== 'card';
+    $('#delay2Row').hidden = fx !== 'card';
+    $('#delayLbl').textContent = fx === 'card' ? 'Délai avant l\'apparition' : fx === 'sms' ? 'Délai avant le message' : 'Délai avant le recul';
+    /* temps */
+    setVal($('#minutes'), cfg.minutes);
+    pressed('#minChips .chip', function(b){ return +b.dataset.m === cfg.minutes; });
+    pressed('#modeSeg .chip', function(b){ return b.dataset.mode === cfg.mode; });
+    $('#durRow').hidden = cfg.mode !== 'auto'; setVal($('#duration'), cfg.duration); $('#durOut').textContent = cfg.duration + ' s';
+    /* sms */
+    setVal($('#smsFrom'), cfg.smsFrom); setVal($('#smsText'), cfg.smsText); setChk($('#smsSound'), cfg.smsSound);
+    /* carte */
+    if (!cfg.cardMorph) slot = 1;
+    $('#slot2').hidden = !cfg.cardMorph; $('#slotSeg').style.display = cfg.cardMorph ? '' : 'none';
+    pressed('#slotSeg .chip', function(b){ return +b.dataset.slot === slot; });
+    var cur = pc(), std = !/^(BR|BB|BL|JKC|JKB)$/.test(cur);
+    pressed('#suitChips .chip', function(b){ return std && b.dataset.s === cur.slice(-1); });
+    pressed('#rankChips .chip', function(b){ return std && b.dataset.r === cur.slice(0, -1); });
+    pressed('#specChips .chip', function(b){ return b.dataset.c === cur; });
+    $('#cardLabel').textContent = (cfg.cardMorph ? (slot === 2 ? 'Après secousse : ' : 'Au départ : ') : '') + cardName(cur);
+    setChk($('#cardMorph'), cfg.cardMorph);
+    /* délais */
+    setVal($('#delay'), cfg.delay); $('#delayOut').textContent = secTxt(cfg.delay);
+    setVal($('#delay2'), cfg.delay2); $('#delay2Out').textContent = secTxt(cfg.delay2);
+    /* boutons d'action */
+    var p = st && st.ph, down = st && st.run === false;
+    var lab = fx === 'time' ? (cfg.mode === 'step' ? 'Enlever une minute' : 'Reculer') : fx === 'sms' ? 'Faire arriver le SMS' : (p === 'on' ? 'Faire disparaître la carte' : 'Faire apparaître la carte');
+    $('#touch').textContent = lab; $('#touch').disabled = !!down;
+    $('#rearm').disabled = !!down; $('#rearm').classList.toggle('hot', !!p && p !== 'armed' && p !== 'busy');
+    $('#morph').hidden = !(fx === 'card' && cfg.cardMorph); $('#morph').disabled = !!down || p !== 'on';
+    $('#hint').textContent = fx === 'card' && cfg.cardMorph ? 'Secousse : change la carte à distance, sans bouger le téléphone.' : '';
+  }
+
+  /* ---------- gestes ---------- */
+  $('#touch').addEventListener('click', function(){ buzz(); cmd('touch', null, 'Touché'); });
+  $('#rearm').addEventListener('click', function(){ buzz(); flush(); cmd('rearm', null, 'Réarmé'); });
+  $('#morph').addEventListener('click', function(){ buzz(); cmd('morph', null, 'Secousse'); });
+  $('#bar').addEventListener('click', function(){ ping(); toast('Test envoyé', 900); });
+  $('#fxSeg').addEventListener('click', function(e){ var b = e.target.closest('.chip'); if (b) set('effect', b.dataset.fx, true); });
+  var setMin = function(v){ v = parseInt(v, 10); if (!isNaN(v)) set('minutes', clamp(v, 1, 720)); };
+  $('#minus').addEventListener('click', function(){ setMin(cfg.minutes - 1); });
+  $('#plus').addEventListener('click', function(){ setMin(cfg.minutes + 1); });
+  $('#minChips').addEventListener('click', function(e){ var b = e.target.closest('.chip'); if (b) setMin(b.dataset.m); });
+  $('#minutes').addEventListener('input', function(e){ var v = parseInt(e.target.value, 10); if (!isNaN(v)) set('minutes', clamp(v, 1, 720)); });
+  $('#minutes').addEventListener('blur', render);
+  $('#modeSeg').addEventListener('click', function(e){ var b = e.target.closest('.chip'); if (b) set('mode', b.dataset.mode, true); });
+  $('#duration').addEventListener('input', function(e){ set('duration', +e.target.value); });
+  $('#delay').addEventListener('input', function(e){ set('delay', +e.target.value); });
+  $('#delay2').addEventListener('input', function(e){ set('delay2', +e.target.value); });
+  $('#smsFrom').addEventListener('input', function(e){ set('smsFrom', e.target.value); });
+  $('#smsText').addEventListener('input', function(e){ set('smsText', e.target.value); });
+  $('#smsSound').addEventListener('change', function(e){ set('smsSound', e.target.checked, true); });
+  $('#cardMorph').addEventListener('change', function(e){ set('cardMorph', e.target.checked, true); });
+  $('#slotSeg').addEventListener('click', function(e){ var b = e.target.closest('.chip'); if (b){ slot = +b.dataset.slot; render(); } });
+  function pickCard(id){ set(slot === 2 && cfg.cardMorph ? 'card2' : 'card', id, true); }
+  function isStd(c){ return !/^(BR|BB|BL|JKC|JKB)$/.test(c); }
+  $('#suitChips').addEventListener('click', function(e){ var b = e.target.closest('.chip'); if (b){ var c = pc(); pickCard((isStd(c) ? c.slice(0, -1) : 'A') + b.dataset.s); } });
+  $('#rankChips').addEventListener('click', function(e){ var b = e.target.closest('.chip'); if (b){ var c = pc(); pickCard(b.dataset.r + (isStd(c) ? c.slice(-1) : 'S')); } });
+  $('#specChips').addEventListener('click', function(e){ var b = e.target.closest('.chip'); if (b) pickCard(b.dataset.c); });
+  $('#forget').addEventListener('click', forget);
+  $('#pairGo').addEventListener('click', function(){ pair($('#code').value); });
+  $('#code').addEventListener('keydown', function(e){ if (e.key === 'Enter') pair(e.target.value); });
+  $('#code').addEventListener('input', function(e){
+    var raw = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    e.target.value = raw.replace(/(.{5})(?=.)/g, '$1-');
+    if (Relay.normalize(raw)) pair(raw);
+  });
+
+  document.addEventListener('visibilitychange', function(){
+    if (document.visibilityState !== 'visible' || !conn) return;
+    wake(); conn.reconnect(); ping();
+  });
+  setInterval(bar, 1000);
+  setInterval(function(){ if (conn && document.visibilityState === 'visible' && net === 'online') ping(); }, 120000);
+
+  /* ---------- démarrage ---------- */
+  (function(){
+    var h = (location.hash || '').replace(/^#/, ''); try { h = decodeURIComponent(h); } catch(e){}
+    var c = window.Relay ? Relay.normalize(h) : null;
+    if (c){ store(c); try { history.replaceState(null, '', location.pathname + location.search); } catch(e){} }
+    secret = window.Relay ? load() : null;
+    if (secret) start(); else show();
+    try { if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(function(){}); } catch(e){}
+  })();
+})();
+</script>
+</body>
+</html>
