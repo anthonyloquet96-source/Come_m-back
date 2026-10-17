@@ -30,13 +30,14 @@ h1{margin:4px 0 0;font:700 20px/1.2 -apple-system,system-ui,sans-serif}
 .btn.solid{background:var(--brass);color:var(--brass-ink);font-size:20px;min-height:84px;border-radius:12px}
 .btn{position:relative;overflow:hidden;transition:transform .2s cubic-bezier(.2,.8,.2,1),filter .2s ease,box-shadow .2s ease;will-change:transform}
 .btn:not([disabled]):active{transform:scale(.965);filter:brightness(.88)}
-.btn::after{content:"";position:absolute;left:0;bottom:0;width:34%;height:3px;border-radius:3px;background:currentColor;opacity:0;pointer-events:none}
-/* ordre envoyé : le bouton reste enfoncé, un fin trait glisse en bas */
+.btn::after{content:"";position:absolute;left:0;right:0;bottom:0;height:4px;background:currentColor;opacity:0;transform-origin:left;transform:scaleX(0);pointer-events:none}
+/* ordre en cours : le bouton reste enfoncé et la barre se remplit pendant le délai réglé */
 .btn.sending{pointer-events:none;transform:scale(.975);filter:brightness(.88)}
-.btn.sending::after{opacity:.55;animation:sweep 1s cubic-bezier(.45,0,.55,1) infinite}
-@keyframes sweep{from{transform:translateX(-100%)}to{transform:translateX(300%)}}
-/* ordre reçu : le bouton se relâche en douceur */
+.btn.sending::after{opacity:.5;animation:fill var(--fill,600ms) linear forwards}
+@keyframes fill{to{transform:scaleX(1)}}
+/* effet déclenché : le bouton se relâche en douceur, la barre s'efface */
 .btn.sent{pointer-events:none;animation:release .5s cubic-bezier(.2,.9,.3,1)}
+.btn.sent::after{opacity:0;transform:scaleX(1);transition:opacity .45s ease}
 @keyframes release{0%{transform:scale(.975);filter:brightness(.88)}55%{transform:scale(1.014);filter:brightness(1.07)}100%{transform:scale(1);filter:none}}
 /* échec : léger tremblement et liseré rouge */
 .btn.fail{pointer-events:none;box-shadow:inset 0 0 0 2px #e0525a;animation:shake .4s ease-out}
@@ -232,17 +233,15 @@ label.l{font-size:14px;color:var(--mute)}
     btn.classList.remove('sending', 'sent', 'fail'); delete btn.dataset.st; btn.removeAttribute('aria-busy');
     render();
   }
-  /* o : {label, btn, ok (texte de succès), then (fonction appelée à l'accusé)} */
+  /* o : {label, onack, onfail}. Les visuels du bouton sont gérés par press(). */
   function cmd(k, extra, o){
     o = o || {};
-    if (!conn){ if (o.btn){ flash(o.btn, 'fail', 'Pas de liaison', 1300); buzzErr(); } else toast('Pas de liaison'); return; }
+    if (!conn){ toast('Pas de liaison'); if (o.onfail) o.onfail('Pas de liaison'); return; }
     var i = id(), m = Object.assign({k: k, id: i}, extra || {});
-    if (o.btn) flash(o.btn, 'sending', '', 0);
     function fail(txt){
       if (!pend[i]) return;
       clearTimeout(pend[i].t); delete pend[i];
-      if (o.btn){ flash(o.btn, 'fail', txt, 1300); buzzErr(); } else toast(txt, 2600);
-      if (o.onfail) o.onfail(txt);
+      if (o.onfail) o.onfail(txt); else toast(txt, 2600);
     }
     pend[i] = {o: o, t: setTimeout(function(){ fail('Pas de réponse'); }, 6000)};
     conn.send(m).then(function(ok){ if (!ok) fail('Non envoyé · pas de réseau ?'); });
@@ -254,9 +253,7 @@ label.l{font-size:14px;color:var(--mute)}
     if (m.cfg) cfg = Object.assign({}, cfg, m.cfg, patch);
     if (m.re && pend[m.re]){
       var o = pend[m.re].o; clearTimeout(pend[m.re].t); delete pend[m.re];
-      if (o.btn){ flash(o.btn, 'sent', '', 520); try { navigator.vibrate && navigator.vibrate(25); } catch(e){} }
-      
-      if (o.then) o.then();
+      if (o.onack) o.onack();
     }
     render(); bar();
   }
@@ -270,7 +267,7 @@ label.l{font-size:14px;color:var(--mute)}
   function flush(then, onfail){
     clearTimeout(patchT); patchT = 0;
     var p = patch; patch = {};
-    if (Object.keys(p).length) cmd('cfg', {set: p}, {label: 'Réglé', then: then, onfail: onfail});
+    if (Object.keys(p).length) cmd('cfg', {set: p}, {label: 'Réglé', onack: then, onfail: onfail});
     else if (then) then();
   }
 
@@ -348,27 +345,38 @@ label.l{font-size:14px;color:var(--mute)}
   }
 
   /* ---------- gestes ---------- */
-  /* texte de succès selon l'effet : l'accusé confirme la réception, pas la fin de l'effet */
-  function okText(){
-    var fx = (st && st.fx) || cfg.effect, p = st && st.ph, d = 0, t;
-    if (fx === 'time'){ t = cfg.mode === 'step' ? 'minute enlevée' : 'recul lancé'; d = cfg.delay; }
-    else if (fx === 'sms'){ t = 'SMS envoyé'; d = cfg.delay; }
-    else if (p === 'on'){ t = 'la carte disparaît'; d = cfg.delay2; }
-    else { t = 'la carte apparaît'; d = cfg.delay; }
-    return 'Reçu · ' + t + (d > 0 ? ' dans ' + d + ' s' : '');
+  var rtt = 500; /* aller-retour estimé vers le téléphone de la salle (ms), affiné à chaque ordre */
+  /* délai (s) entre le toucher et l'effet : celui que le téléphone de la salle va appliquer */
+  function delayFor(k){
+    if (k !== 'touch') return 0;
+    var fx = patch.effect || (st && st.fx) || cfg.effect, p = st && st.fx === fx ? st.ph : 'armed';
+    var d = fx === 'card' && p === 'on' ? cfg.delay2 : cfg.delay;
+    return d > 0 ? d : 0;
   }
-  /* les réglages en attente partent d'abord, et l'ordre seulement une fois qu'ils sont appliqués */
-  function press(btn, k, ok, label){
+  /* Le bouton reste enfoncé, la barre se remplit pendant le délai ; il se relâche quand l'ordre est confirmé ET que le délai est écoulé.
+     Les réglages en attente partent d'abord, l'ordre ensuite. */
+  function press(btn, k, label){
     if (btn.dataset.st) return;
     buzz();
-    var go = function(){ cmd(k, null, {btn: btn, ok: ok(), label: label}); };
-    if (Object.keys(patch).length){ flash(btn, 'sending', '', 0); flush(function(){ unflashQuiet(btn); go(); }, function(t){ flash(btn, 'fail', t, 1300); }); }
-    else go();
+    /* la barre dure le délai réglé + le trajet aller estimé (la moitié de l'aller-retour mesuré), pour finir au moment de l'effet */
+    var fillMs = Math.round(delayFor(k) * 1000 + clamp(rtt / 2, 250, 1500)), acked = false, ended = false, over = false, endT, tSend = 0;
+    btn.style.setProperty('--fill', fillMs + 'ms');
+    flash(btn, 'sending', '', 0);
+    function release(){ if (over) return; over = true; clearTimeout(endT); flash(btn, 'sent', '', 520); try { navigator.vibrate && navigator.vibrate(18); } catch(e){} }
+    function fail(txt){ if (over) return; over = true; clearTimeout(endT); flash(btn, 'fail', txt, 1300); buzzErr(); }
+    endT = setTimeout(function(){ ended = true; if (acked) release(); }, fillMs);
+    function send(){
+      tSend = performance.now();
+      cmd(k, null, {label: label, onack: function(){
+        var d = performance.now() - tSend; rtt = rtt ? rtt * .6 + d * .4 : d;
+        acked = true; if (ended) release();
+      }, onfail: fail});
+    }
+    if (Object.keys(patch).length) flush(send, fail); else send();
   }
-  function unflashQuiet(btn){ btn.classList.remove('sending'); delete btn.dataset.st; btn.removeAttribute('aria-busy'); }
-  $('#touch').addEventListener('click', function(e){ press(e.currentTarget, 'touch', okText, 'Touché'); });
-  $('#rearm').addEventListener('click', function(e){ press(e.currentTarget, 'rearm', function(){ return 'Réarmé'; }, 'Réarmé'); });
-  $('#morph').addEventListener('click', function(e){ press(e.currentTarget, 'morph', function(){ return 'Secousse envoyée'; }, 'Secousse'); });
+  $('#touch').addEventListener('click', function(e){ press(e.currentTarget, 'touch', 'Touché'); });
+  $('#rearm').addEventListener('click', function(e){ press(e.currentTarget, 'rearm', 'Réarmé'); });
+  $('#morph').addEventListener('click', function(e){ press(e.currentTarget, 'morph', 'Secousse'); });
   $('#bar').addEventListener('click', function(){ ping(); toast('Test envoyé', 900); });
   $('#fxSeg').addEventListener('click', function(e){ var b = e.target.closest('.chip'); if (b) set('effect', b.dataset.fx, true); });
   var setMin = function(v){ v = parseInt(v, 10); if (!isNaN(v)) set('minutes', clamp(v, 1, 720)); };
