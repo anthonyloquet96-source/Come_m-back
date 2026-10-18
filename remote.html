@@ -68,6 +68,13 @@ label.l{font-size:14px;color:var(--mute)}
 .foot{text-align:center;padding:6px 0 2px}
 .linkbtn{appearance:none;background:none;border:0;color:var(--mute);font:14px -apple-system,system-ui,sans-serif;text-decoration:underline;padding:10px;cursor:pointer}
 .code{letter-spacing:.08em;text-transform:uppercase;font-family:ui-monospace,Menlo,monospace;text-align:center}
+#next{grid-column:1/-1}
+.tourbar{display:flex;flex-direction:column;gap:8px}
+.tourhead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font:600 12px/1.2 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--brass)}
+.tourhead .tourhint{font-weight:400;letter-spacing:0;text-transform:none;color:var(--mute);text-align:right}
+.tourchips{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 8px}
+.tourchips .chip{flex:none;max-width:70vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tourchips .chip b{color:var(--brass);font-weight:600;margin-right:6px}
 </style>
 </head>
 <body>
@@ -96,11 +103,16 @@ label.l{font-size:14px;color:var(--mute)}
   <section id="ctl" hidden style="display:flex;flex-direction:column;gap:12px">
     <div class="bar" id="bar" role="button" aria-label="Tester la liaison"><span class="dot" id="dot"></span><span class="txt" id="barTxt">Connexion…</span></div>
     <p class="phase" id="phase"></p>
+    <div class="tourbar" id="tourBar" hidden>
+      <div class="tourhead"><span id="tourNo"></span><span class="tourhint">Touche une étape pour l'armer</span></div>
+      <div class="tourchips" id="tourChips" role="tablist" aria-label="Étapes du programme"></div>
+    </div>
 
     <button class="btn solid" id="touch" type="button">Toucher</button>
     <div class="row2">
       <button class="btn ghost" id="rearm" type="button">Réarmer</button>
       <button class="btn ghost" id="morph" type="button" hidden>Secousse</button>
+      <button class="btn ghost" id="next" type="button" hidden>Étape suivante</button>
     </div>
 
     <div class="grp">
@@ -310,7 +322,11 @@ label.l{font-size:14px;color:var(--mute)}
   function phaseText(){
     if (!st) return '';
     if (st.run === false) return 'Lance le tour sur le téléphone de la salle';
-    var p = st.ph, m = cfg.minutes;
+    var p = st.ph, m = cfg.minutes, tr = st.tour, nx = tr && tr.i < tr.n - 1 ? tr.names[tr.i + 1] : '';
+    if (nx && (p === 'done' || p === 'on')){
+      var how = tr.nt === 'time' ? 'suivant automatique' : tr.nt === 'shake' ? 'secoue le téléphone pour lancer' : 'le toucher lance';
+      return 'Joué · ' + how + ' « ' + nx + ' »';
+    }
     if (st.fx === 'time') return p === 'armed' ? 'Armé · ' + m + ' min à reculer' : p === 'busy' ? 'Recul en cours…' : p === 'partial' ? 'Recul partiel · il reste ' + st.left + ' min' : 'Terminé · réarme pour recommencer';
     if (st.fx === 'sms') return p === 'armed' ? 'Prêt · le SMS n\'est pas arrivé' : p === 'busy' ? 'Délai en cours…' : 'SMS affiché · réarme pour le retirer';
     if (st.fx === 'clock') return p === 'armed' ? 'Armé · l\'heure passera à ' + cfg.clockT : p === 'busy' ? 'Changement en cours…' : 'Heure changée · touche pour rétablir';
@@ -326,6 +342,15 @@ label.l{font-size:14px;color:var(--mute)}
     var fx = (st && st.fx) || cfg.effect;
     if (patch.effect) fx = patch.effect;
     $('#phase').textContent = phaseText();
+    var tr = st && st.tour, multi = !!(tr && tr.n > 0 && st.run !== false);
+    $('#tourBar').hidden = !multi;
+    if (multi){
+      $('#tourNo').textContent = (tr.pn ? tr.pn + ' · ' : '') + 'Étape ' + (tr.i + 1) + ' sur ' + tr.n;
+      var h = tr.names.map(function(n, i){ return '<button class="chip" type="button" role="tab" data-i="' + i + '" aria-pressed="' + (i === tr.i) + '"><b>' + (i + 1) + '</b>' + n.replace(/[&<>"]/g, function(c){ return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]; }) + '</button>'; }).join('');
+      var box = $('#tourChips');
+      if (box.dataset.h !== h){ box.innerHTML = h; box.dataset.h = h; }
+      var cc = box.querySelector('[aria-pressed="true"]'); if (cc && box.dataset.cur !== String(tr.i)){ box.dataset.cur = String(tr.i); try { cc.scrollIntoView({inline: 'center', block: 'nearest'}); } catch(e){} }
+    }
     pressed('#fxSeg .chip', function(b){ return b.dataset.fx === fx; });
     $('#gTime').hidden = fx !== 'time'; $('#gSms').hidden = fx !== 'sms'; $('#gCard').hidden = fx !== 'card'; $('#gClock').hidden = fx !== 'clock';
     $('#delay2Row').hidden = fx !== 'card' && fx !== 'clock';
@@ -358,6 +383,7 @@ label.l{font-size:14px;color:var(--mute)}
     var lab = fx === 'clock' ? (p === 'on' ? 'Rétablir l\'heure' : 'Changer l\'heure') : fx === 'time' ? (cfg.mode === 'step' ? 'Enlever une minute' : 'Reculer') : fx === 'sms' ? 'Faire arriver le SMS' : (p === 'on' ? 'Faire disparaître la carte' : 'Faire apparaître la carte');
     if (!$('#touch').dataset.st) $('#touch').textContent = lab; $('#touch').disabled = !!down;
     $('#rearm').disabled = !!down; $('#rearm').classList.toggle('hot', !!p && p !== 'armed' && p !== 'busy');
+    $('#next').hidden = !(multi && tr.i < tr.n - 1); $('#next').disabled = !!down; if (multi && tr.i < tr.n - 1) $('#next').textContent = 'Étape suivante : ' + tr.names[tr.i + 1];
     $('#morph').hidden = !(fx === 'card' && cfg.cardMorph); $('#morph').disabled = !!down || p !== 'on';
     $('#hint').textContent = fx === 'card' && cfg.cardMorph ? 'Secousse : change la carte à distance, sans bouger le téléphone.' : '';
   }
@@ -394,6 +420,12 @@ label.l{font-size:14px;color:var(--mute)}
   }
   $('#touch').addEventListener('click', function(e){ press(e.currentTarget, 'touch', 'Touché'); });
   $('#rearm').addEventListener('click', function(e){ press(e.currentTarget, 'rearm', 'Réarmé'); });
+  $('#next').addEventListener('click', function(e){ press(e.currentTarget, 'next', 'Suivant'); });
+  $('#tourChips').addEventListener('click', function(e){
+    var b = e.target.closest('[data-i]'); if (!b) return;
+    if (st && st.run === false){ toast('Lance le tour sur le téléphone de la salle', 2200); return; }
+    buzz(); cmd('goto', {i: +b.dataset.i}, {onack: function(){ toast('Étape ' + (+b.dataset.i + 1) + ' armée', 900); }, onfail: function(t){ toast(t, 2600); }});
+  });
   $('#morph').addEventListener('click', function(e){ press(e.currentTarget, 'morph', 'Secousse'); });
   $('#bar').addEventListener('click', function(){ ping(); toast('Test envoyé', 900); });
   $('#fxSeg').addEventListener('click', function(e){ var b = e.target.closest('.chip'); if (b) set('effect', b.dataset.fx, true); });
