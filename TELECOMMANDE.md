@@ -1,4 +1,4 @@
-# Télécommande — architecture (v45)
+# Télécommande — architecture (v46)
 
 ## Principe
 Deux téléphones, un relais gratuit entre eux. Le téléphone de la salle (« hôte ») exécute les ordres ;
@@ -27,13 +27,14 @@ Chaque message porte `t` (date) et `n` (nonce) : refusé s'il a plus de 60 s ou 
 | Sens | `k` | Rôle |
 |---|---|---|
 | remote → hôte | `hello` | demande l'état (test de liaison) |
-| | `cfg` + `set{}` | règle : `effect (time/sms/card/clock) minutes mode duration delay delay2 smsFrom smsText smsSound card card2 cardMorph clockT clockD after gap` (liste blanche, valeurs bornées) |
+| | `cfg` + `set{}` | règle : `effect (time/sms/card/clock) minutes mode duration delay delay2 smsFrom smsText smsSound card card2 cardMorph clockT clockD` (liste blanche, valeurs bornées) |
 | | `touch` | exactement le toucher d'un doigt (`rewind()`) |
 | | `rearm` | réarmer (= appui long coin droit) |
 | | `morph` | la « secousse » à distance (`doMorph()`) |
-| | `goto` + `i` | arme le tour n° `i` du programme (sans le jouer) |
+| | `goto` + `i` | programme : arme l'étape `i` (sans la jouer) |
+| | `next` | programme : joue l'étape suivante tout de suite |
 | | `show` + `card` | annonce directe : la carte apparaît tout de suite, ou remplace en fondu celle qui est affichée (effet « carte » seulement) |
-| hôte → remote | `state` | `run` (mode tour ?), `fx`, `ph` (armed/busy/on/partial/done), `left`, `cfg{}`, `tour{i,n,names[]}` (programme), `re` (accusé de l'ordre) |
+| hôte → remote | `state` | `run` (mode tour ?), `fx`, `ph` (armed/busy/on/partial/done), `left`, `cfg{}`, `tour{i,n,pn,names[],nt,gap,pl}` (programme en cours), `re` (accusé de l'ordre) |
 
 Règles côté hôte : un changement d'effet réarme toujours ; un changement de minutes réarme seulement si rien n'a encore été joué.
 L'état est renvoyé à chaque ordre (accusé « ✓ reçu ») et à chaque changement de phase, aussi quand c'est un vrai doigt qui touche.
@@ -54,12 +55,9 @@ Pas de battement de cœur : un test de liaison toutes les 2 min seulement quand 
 - **L'heure devient…** (`clock`) : au toucher l'heure (et la date, si choisie) passe à la valeur voulue avec le défilement des chiffres, puis continue de tourner ; un second toucher rétablit l'heure réelle. Changer `clockT`/`clockD` à distance quand l'heure est déjà changée met l'écran à jour immédiatement.
 - **Annonce directe d'une carte** : côté télécommande, case « Afficher dès que je choisis » ; valeur + couleur (ou carte spéciale) envoient `show`.
 
-## Programme de tours (v45)
-- Un **programme** est une liste de tours (30 max). Chaque tour garde **tous** ses réglages d'effet (effet, minutes, délais, SMS, carte, morph, heure…) ; fond d'écran, heure et affichage restent communs.
-- Stockage : `S.prog` (un instantané par tour) et `S.cur` ; `S` contient toujours les réglages du tour courant, donc tout le code existant est inchangé. Un seul tour = comportement d'avant.
-- Le mode tour démarre toujours au tour 1. Quand un tour est **joué** (recul terminé, SMS affiché, carte visible, heure changée) et qu'il en reste un :
-  - `Au toucher` : le toucher retire proprement l'effet (carte/heure/SMS) et joue le tour suivant ;
-  - `Automatique` : le suivant démarre seul après `gap` secondes (0–60).
-- Dernier tour : le toucher garde son effet normal (la carte disparaît, l'heure se rétablit).
-- Télécommande : barre « Tour i sur n » ; toucher un tour = `goto` (armé, non joué) ; le bouton principal devient « Tour suivant » ; `after`/`gap` modifiables à distance.
-- Menu : rubriques avec résumé, une seule ouverte à la fois, rappel du programme près de « Lancer le tour ».
+## Programmes (v46)
+- Le **tour simple** (rubrique Effets) est inchangé. Les **programmes** (rubrique 3) sont des suites d'étapes stockées à part (`marche-arriere-prog-v1`) : plusieurs programmes, chacun nommé.
+- Chaque étape a **tous** ses réglages d'effet ; on les modifie dans l'écran « Effets » habituel (barre « Terminé » en haut). Pendant ce temps, rien n'est écrit dans le tour simple.
+- Entre deux étapes, le **déclenchement** de la suivante : `Au toucher`, `Après un temps` (0–60 s après que la précédente est jouée) ou `En secouant` (capteur autorisé au lancement ; sans capteur, le toucher ou le bouton « Étape suivante » de la télécommande prennent le relais). Le « délai après activation » est le délai habituel de chaque étape.
+- Jeu : le bouton du bas devient « Lancer « nom » » quand la rubrique Programmes est ouverte. Au toucher/secousse, l'effet affiché est retiré proprement, puis l'étape suivante est jouée. Le dernier lancé est repris à l'ouverture directe.
+- Télécommande : barre « Programme · Étape i sur n », étapes cliquables (`goto`), bouton « Étape suivante » (`next`).

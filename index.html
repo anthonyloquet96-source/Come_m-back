@@ -118,11 +118,35 @@ h2{font:700 19px/1.2 var(--f-display);margin:0 0 6px;display:flex;align-items:ce
 .cat>summary .sum{flex:1;min-width:0;text-align:right;font:400 12px var(--f-mono);color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cat[open]>summary .sum{display:none}
 .cat>summary .sum[data-ok="1"]{color:#5fbf8a}
-.tours{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 8px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
-.tours .chip{flex:none;scroll-snap-align:start;max-width:62vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tours .chip b{color:var(--brass);font-weight:600;margin-right:6px}
-#progAct .chip[disabled]{opacity:.4;cursor:not-allowed}
+.tours{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 8px;-webkit-overflow-scrolling:touch}
+.tours .chip{flex:none;max-width:62vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #launchInfo{color:var(--chalk)!important;font-size:13px!important}
+.tree{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.tree>li{position:relative;padding-left:46px}
+.tree>li::before{content:"";position:absolute;left:17px;top:0;bottom:0;width:2px;background:var(--line)}
+.tree>li.first::before{top:24px}.tree>li.last::before{bottom:calc(100% - 24px)}
+.tree>li.first.last::before{display:none}
+.tree .dot{position:absolute;left:4px;top:8px;width:28px;height:28px;border-radius:50%;border:2px solid var(--brass);background:var(--felt);color:var(--brass);font:600 13px/24px var(--f-mono);text-align:center;z-index:1}
+.tree .nd{display:flex;gap:8px;align-items:stretch;padding:4px 0}
+.tree .card{flex:1;min-width:0;text-align:left;appearance:none;background:var(--felt);border:1px solid var(--line);border-radius:10px;color:var(--chalk);padding:10px 12px;cursor:pointer;display:flex;flex-direction:column;gap:2px;font:inherit;min-height:48px}
+.tree .card strong{font:600 15px var(--f-body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tree .card small{color:var(--mute);font-size:12px;line-height:1.35}
+.tree .card:active{border-color:var(--brass)}
+.tree .nact{display:flex;flex-direction:row;gap:4px;align-items:center}
+.tree .nact button{appearance:none;background:var(--felt-2);border:1px solid var(--line);color:var(--mute);border-radius:8px;width:32px;height:36px;font-size:13px;cursor:pointer;padding:0}
+.tree .nact button[disabled]{opacity:.3}
+.tree li.lk{padding-top:2px;padding-bottom:2px}
+.tree .trig{appearance:none;background:var(--felt-2);border:1px dashed var(--brass);color:var(--brass);border-radius:999px;padding:7px 14px;font:500 13px var(--f-mono);cursor:pointer;min-height:36px}
+.tree .tpanel{margin:8px 0 6px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--felt);display:flex;flex-direction:column;gap:10px}
+.tree li.ad{padding-top:6px;padding-bottom:2px}
+.tree li.ad::before{display:none}
+#stepBar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:12px;padding:10px 0;background:var(--felt);border-bottom:1px solid var(--line)}
+#stepBar[hidden]{display:none}
+#stepBar .btn{width:auto;min-height:44px;padding:0 18px}
+#stepBar .stepttl{display:flex;flex-direction:column;min-width:0}
+#stepBar .stepttl strong{font:700 16px var(--f-display);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#stepBar .stepttl small{color:var(--mute);font:400 12px var(--f-mono)}
+#setup.stepEdit>header,#setup.stepEdit #catBg,#setup.stepEdit #catProg,#setup.stepEdit #catRc,#setup.stepEdit #catRemote,#setup.stepEdit #catDisp,#setup.stepEdit .launch,#setup.stepEdit #buildNote,#setup.stepEdit #catFx>summary{display:none!important}
 .catbody{display:flex;flex-direction:column;gap:12px;padding:0 12px 14px}
 .grp{display:flex;flex-direction:column;gap:12px;padding:14px;border:1px solid var(--line);border-radius:10px;background:var(--felt-2)}
 .grp>h3{margin:0;font:600 12px/1.2 var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--brass)}
@@ -131,7 +155,7 @@ h2{font:700 19px/1.2 var(--f-display);margin:0 0 6px;display:flex;align-items:ce
 .subs{display:flex;flex-direction:column;gap:12px}
 .grp[hidden],.subs[hidden],.cat[hidden],.chips[hidden]{display:none!important}
 
-.launch{position:sticky;bottom:0;background:var(--felt);padding:14px 0 14px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:10px;margin-top:-4px}
+.launch{position:sticky;z-index:6;bottom:0;background:var(--felt);padding:14px 0 14px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:10px;margin-top:-4px}
 .launch p{margin:0;font:400 12px/1.5 var(--f-mono);color:var(--mute)}
 #go{position:relative;overflow:hidden;transition:transform .12s ease,filter .12s ease,box-shadow .12s ease;-webkit-tap-highlight-color:transparent}
 #go:not([disabled]):active,#go.press{transform:scale(.96);filter:brightness(.88);box-shadow:inset 0 3px 10px rgba(0,0,0,.35)}
@@ -221,6 +245,10 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
 </style>
 
 <div id="setup" class="wrap" hidden>
+  <div id="stepBar" hidden>
+    <button class="btn solid sm" id="stepDone" type="button">Terminé</button>
+    <div class="stepttl"><strong id="stepT1"></strong><small id="stepT2"></small></div>
+  </div>
   <header>
     <p class="kicker">Outil de scène</p>
     <h1>Marche Arrière</h1>
@@ -279,23 +307,8 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   </details>
 
   <details class="cat" id="catFx" open>
-    <summary><span class="n">2</span>Tours<span class="sum" id="sumFx"></span></summary>
+    <summary><span class="n">2</span>Effets<span class="sum" id="sumFx"></span></summary>
     <div class="catbody">
-      <div class="grp" id="progGrp">
-        <h3>Programme</h3>
-        <div class="tours" id="tours" role="tablist" aria-label="Tours du programme"></div>
-        <div class="chips" id="progAct">
-          <button class="chip" type="button" id="tAdd">+ Nouveau tour</button>
-          <button class="chip" type="button" id="tDup">Dupliquer</button>
-          <button class="chip" type="button" id="tLeft" aria-label="Déplacer le tour vers la gauche">◀</button>
-          <button class="chip" type="button" id="tRight" aria-label="Déplacer le tour vers la droite">▶</button>
-          <button class="chip" type="button" id="tDel">Supprimer</button>
-        </div>
-        <label class="help" for="tName">Nom du tour (facultatif)</label>
-        <input class="txt" id="tName" type="text" maxlength="24" autocomplete="off" placeholder="Ex. : La carte de Julie">
-        <p class="help" id="progHelp"></p>
-      </div>
-
       <div class="grp">
         <h3>Effet au toucher</h3>
         <div class="seg" role="radiogroup" aria-label="Effet">
@@ -433,49 +446,29 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
           <input id="delay" type="range" min="0" max="15" step="0.5">
         </div>
       </div>
-
-      <div class="grp" id="grpAfter" hidden>
-        <h3>Ensuite : le tour suivant</h3>
-        <div class="seg" id="afterSeg" role="radiogroup" aria-label="Passage au tour suivant">
-          <label><input type="radio" name="after" value="touch"><span><strong>Au toucher</strong><small>Un toucher retire l'effet et joue le tour suivant.</small></span></label>
-          <label><input type="radio" name="after" value="auto"><span><strong>Automatique</strong><small>Le tour suivant démarre tout seul après un délai.</small></span></label>
-        </div>
-        <div class="row" id="gapRow">
-          <label for="gap">Délai avant le tour suivant</label><output id="gapVal"></output>
-          <input id="gap" type="range" min="0" max="60" step="1">
-        </div>
-      </div>
     </div>
   </details>
 
-  <details class="cat" id="catDisp">
-    <summary><span class="n">3</span>Affichage<span class="sum" id="sumDisp"></span></summary>
+  <details class="cat" id="catProg">
+    <summary><span class="n">3</span>Programmes<span class="sum" id="sumProg"></span></summary>
     <div class="catbody">
       <div class="grp">
-        <h3>Lancement</h3>
-        <label class="check"><input id="autostart" type="checkbox">Ouvrir directement en mode tour</label>
+        <h3>Mes programmes</h3>
+        <p class="help">Un programme enchaîne plusieurs tours : chacun a ses propres réglages, et tu choisis comment passer au suivant.</p>
+        <div class="tours" id="plist" aria-label="Programmes"></div>
+        <div id="pbox" hidden>
+          <label class="help" for="pName">Nom du programme</label>
+          <input class="txt" id="pName" type="text" maxlength="30" autocomplete="off" placeholder="Ex. : Close-up du samedi">
+        </div>
       </div>
-      <div class="grp">
-        <h3>Orientation</h3>
-        <label class="check"><input id="lockPortrait" type="checkbox">Verrouillage portrait : garder l'écran droit si je tourne le téléphone</label>
-        <p class="help">iOS ne permet pas à une page web de bloquer la rotation : ici, l'image reste droite par rapport au téléphone. Pour un blocage complet, active aussi le verrouillage de l'orientation d'iOS (Centre de contrôle).</p>
-        <label class="check"><input id="lockInv" type="checkbox">Inverser le sens de la correction en paysage</label>
-      </div>
-      <div class="grp">
-        <h3>Cadre du tour</h3>
-        <label class="help" for="layout">Mode d'affichage du tour</label>
-        <select id="layout" class="txt">
-          <option value="1">Standard</option>
-          <option value="2">Page entière</option>
-        </select>
-        <div class="row"><label for="extra">Étendre le fond vers le bas</label><output id="extraVal"></output><input id="extra" type="range" min="0" max="150" step="1"></div>
-        <p class="help">À utiliser si une bande apparaît en bas de l'écran pendant le tour. Augmente jusqu'à ce qu'elle disparaisse.</p>
-      </div>
-      <div class="grp">
-        <h3>Diagnostic</h3>
-        <label class="check"><input id="debug" type="checkbox">Afficher les repères en mode tour</label>
-        <p class="help">Les repères tracent un cadre rouge et des lignes de couleur avec les tailles mesurées. Utile pour me les envoyer en capture.</p>
-        <p class="help" id="diagText"></p>
+      <div class="grp" id="treeGrp" hidden>
+        <h3>Déroulé</h3>
+        <ol class="tree" id="tree"></ol>
+        <button class="btn solid" id="pGo" type="button">Lancer ce programme</button>
+        <div class="chips">
+          <button class="chip" type="button" id="pDup">Dupliquer le programme</button>
+          <button class="chip" type="button" id="pDel">Supprimer le programme</button>
+        </div>
       </div>
     </div>
   </details>
@@ -513,6 +506,38 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
           </div>
         </details>
         <p class="help" id="rcState"></p>
+      </div>
+    </div>
+  </details>
+
+  <details class="cat" id="catDisp">
+    <summary><span class="n">5</span>Affichage<span class="sum" id="sumDisp"></span></summary>
+    <div class="catbody">
+      <div class="grp">
+        <h3>Lancement</h3>
+        <label class="check"><input id="autostart" type="checkbox">Ouvrir directement en mode tour</label>
+      </div>
+      <div class="grp">
+        <h3>Orientation</h3>
+        <label class="check"><input id="lockPortrait" type="checkbox">Verrouillage portrait : garder l'écran droit si je tourne le téléphone</label>
+        <p class="help">iOS ne permet pas à une page web de bloquer la rotation : ici, l'image reste droite par rapport au téléphone. Pour un blocage complet, active aussi le verrouillage de l'orientation d'iOS (Centre de contrôle).</p>
+        <label class="check"><input id="lockInv" type="checkbox">Inverser le sens de la correction en paysage</label>
+      </div>
+      <div class="grp">
+        <h3>Cadre du tour</h3>
+        <label class="help" for="layout">Mode d'affichage du tour</label>
+        <select id="layout" class="txt">
+          <option value="1">Standard</option>
+          <option value="2">Page entière</option>
+        </select>
+        <div class="row"><label for="extra">Étendre le fond vers le bas</label><output id="extraVal"></output><input id="extra" type="range" min="0" max="150" step="1"></div>
+        <p class="help">À utiliser si une bande apparaît en bas de l'écran pendant le tour. Augmente jusqu'à ce qu'elle disparaisse.</p>
+      </div>
+      <div class="grp">
+        <h3>Diagnostic</h3>
+        <label class="check"><input id="debug" type="checkbox">Afficher les repères en mode tour</label>
+        <p class="help">Les repères tracent un cadre rouge et des lignes de couleur avec les tailles mesurées. Utile pour me les envoyer en capture.</p>
+        <p class="help" id="diagText"></p>
       </div>
     </div>
   </details>
@@ -616,7 +641,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     slab: 'Rockwell,"Roboto Slab","Courier New",serif',
     mono: 'ui-monospace,"SF Mono",Menlo,Consolas,monospace'
   };
-  var DEF = {minutes:10, effect:'time', card:'AS', cardX:50, cardY:50, cardS:88, cardIdx:true, cardClock:true, lockPortrait:true, lockInv:false, cardMotion:false, cardMotionK:1, cardMorph:false, cardFlick:true, card2:'7H', clockT:'12:00', clockD:'', morphK:1, cardMotionInv:false, cardFade:'fade', delay2:0, after:'touch', gap:5, name:'', smsFrom:'Messages', smsText:'le sept de cœur', smsY:60, smsX:50, smsS:1, smsSound:true, mode:'auto', duration:5, delay:0, autostart:true, bgMode:'mask', rawS:1, rawX:0, rawY:0, extra:0, layout:'1', debug:false, x:50, y:22.5, size:28, color:'#ffffff', showDate:true, fill:'mirror', font:'sf', weight:600, width:100, spacing:0, h12:false, zero:true, cstyle:'solid', copacity:100, shadow:false, dateFmt:'long', dateSize:20};
+  var DEF = {minutes:10, effect:'time', card:'AS', cardX:50, cardY:50, cardS:88, cardIdx:true, cardClock:true, lockPortrait:true, lockInv:false, cardMotion:false, cardMotionK:1, cardMorph:false, cardFlick:true, card2:'7H', clockT:'12:00', clockD:'', morphK:1, cardMotionInv:false, cardFade:'fade', delay2:0, last:'', smsFrom:'Messages', smsText:'le sept de cœur', smsY:60, smsX:50, smsS:1, smsSound:true, mode:'auto', duration:5, delay:0, autostart:true, bgMode:'mask', rawS:1, rawX:0, rawY:0, extra:0, layout:'1', debug:false, x:50, y:22.5, size:28, color:'#ffffff', showDate:true, fill:'mirror', font:'sf', weight:600, width:100, spacing:0, h12:false, zero:true, cstyle:'solid', copacity:100, shadow:false, dateFmt:'long', dateSize:20};
   var DEF_ZONES = [{x:0, y:12, w:100, h:17}];
   var KEY = 'marche-arriere-v4';
   var S = Object.assign({}, DEF, {zones: DEF_ZONES.map(function(z){ return Object.assign({}, z); })});
@@ -624,22 +649,35 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   if (!Array.isArray(S.zones)) S.zones = DEF_ZONES.map(function(z){ return Object.assign({}, z); });
   S.minutes = Math.min(720, Math.max(1, parseInt(S.minutes, 10) || DEF.minutes));
 
-  /* ---------- programme : une liste de tours, chacun avec tous ses réglages d'effet ----------
-     S contient toujours les réglages du tour courant (S.cur) ; S.prog en garde un instantané par tour.
-     Le fond d'écran, l'heure, le style et l'affichage restent communs à tous les tours. */
-  var TOUR_KEYS = ['effect','minutes','mode','duration','delay','delay2','after','gap','name','smsFrom','smsText','smsX','smsY','smsS','smsSound','card','card2','cardX','cardY','cardS','cardIdx','cardClock','cardMotion','cardMotionK','cardMotionInv','cardMorph','cardFade','cardFlick','morphK','clockT','clockD'];
-  function snap(){ var o = {}; TOUR_KEYS.forEach(function(k){ o[k] = S[k]; }); return o; }
-  function tourFull(t){ var o = {}; TOUR_KEYS.forEach(function(k){ o[k] = DEF[k]; }); return Object.assign(o, t || {}); }
-  if (!Array.isArray(S.prog) || !S.prog.length) S.prog = [snap()];
-  S.prog = S.prog.slice(0, 30).map(tourFull);
-  S.cur = Math.min(S.prog.length - 1, Math.max(0, parseInt(S.cur, 10) || 0));
-
   var img = null, imgVer = 0, rawImg = null, rawVer = 0;
   var useRaw = function(){ return S.bgMode === 'raw' && !!rawImg; };
   var pad = function(n){ return (n < 10 ? '0' : '') + n; };
   var hm = function(d){ return pad(d.getHours()) + ':' + pad(d.getMinutes()); };
   var clamp = function(v, a, b){ return Math.min(b, Math.max(a, v)); };
-  var save = function(){ try { S.prog[S.cur] = snap(); localStorage.setItem(KEY, JSON.stringify(S)); } catch(e){} };
+  /* ---------- programmes : des suites de tours, chacun avec tous ses réglages d'effet ----------
+     Le « tour simple » (rubrique Effets) reste tel quel. Un programme vit à part ; pendant qu'on modifie une étape
+     ou qu'on joue un programme, S porte les réglages de l'étape et rien n'est écrit dans le tour simple. */
+  var PKEY = 'marche-arriere-prog-v1';
+  var P = {list: [], sel: ''};
+  try { var pj = JSON.parse(localStorage.getItem(PKEY) || '{}'); if (pj && Array.isArray(pj.list)) P = {list: pj.list, sel: pj.sel || ''}; } catch(e){}
+  var STEP_KEYS = ['effect','minutes','mode','duration','delay','delay2','smsFrom','smsText','smsX','smsY','smsS','smsSound','card','card2','cardX','cardY','cardS','cardIdx','cardClock','cardMotion','cardMotionK','cardMotionInv','cardMorph','cardFade','cardFlick','morphK','clockT','clockD'];
+  function snap(){ var o = {}; STEP_KEYS.forEach(function(k){ o[k] = S[k]; }); return o; }
+  function stepFull(t){ var o = {}; STEP_KEYS.forEach(function(k){ o[k] = DEF[k]; }); o = Object.assign(o, t || {}); o.minutes = Math.min(720, Math.max(1, parseInt(o.minutes, 10) || DEF.minutes)); return o; }
+  var uid = function(){ return 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); };
+  P.list = P.list.filter(function(p){ return p && typeof p.id === 'string' && Array.isArray(p.steps); }).slice(0, 30).map(function(p){
+    return {id: p.id, name: String(p.name || '').slice(0, 30), steps: p.steps.slice(0, 40).map(function(t){
+      var st = stepFull(t); st.trig = t && (t.trig === 'time' || t.trig === 'shake') ? t.trig : 'touch'; st.gap = Math.min(120, Math.max(0, parseInt(t && t.gap, 10) || 5)); return st; })};
+  });
+  if (!P.list.some(function(p){ return p.id === P.sel; })) P.sel = P.list.length ? P.list[0].id : '';
+  var saveP = function(){ try { localStorage.setItem(PKEY, JSON.stringify(P)); } catch(e){} };
+  var ectx = null, progRun = null; /* ectx : étape en cours de modification ; progRun : programme en cours de jeu */
+  var save = function(){
+    try {
+      if (ectx){ var st = ectx.p.steps[ectx.i]; if (st){ Object.assign(st, snap()); saveP(); } return; }
+      if (progRun) return;
+      localStorage.setItem(KEY, JSON.stringify(S));
+    } catch(e){}
+  };
 
   /* stockage de l'image (IndexedDB) */
   function idb(){ return new Promise(function(res, rej){ try {
@@ -1196,36 +1234,6 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     if (S.effect !== 'time') $('#live').innerHTML = 'Il est <b>' + hm(now) + '</b> · l\'écran garde l\'heure réelle'; else
     $('#live').innerHTML = 'Il est <b>' + hm(now) + '</b> · l\'écran affichera <b>' + hm(new Date(now.getTime() + S.minutes * 60000)) + '</b>';
   }
-  /* programme : onglets des tours, actions, enchaînement, résumés des rubriques */
-  function renderProg(){
-    var n = S.prog.length, box = $('#tours'), html = '';
-    S.prog.forEach(function(t, i){
-      var lab = tourLabel(i === S.cur ? snap() : t).replace(/[&<>"]/g, function(c){ return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]; });
-      html += '<button class="chip" type="button" role="tab" data-i="' + i + '" aria-pressed="' + (i === S.cur) + '" aria-selected="' + (i === S.cur) + '"><b>' + (i + 1) + '</b>' + lab + '</button>';
-    });
-    if (box.dataset.h !== html){ box.innerHTML = html; box.dataset.h = html; }
-    var cur = box.querySelector('[data-i="' + S.cur + '"]');
-    if (cur && box.scrollWidth > box.clientWidth && !box.dataset.sc){ box.dataset.sc = '1'; try { cur.scrollIntoView({inline: 'nearest', block: 'nearest'}); } catch(e){} setTimeout(function(){ delete box.dataset.sc; }, 300); }
-    $('#tAdd').disabled = n >= 30; $('#tDup').disabled = n >= 30; $('#tDel').disabled = n < 2;
-    $('#tLeft').disabled = S.cur < 1; $('#tRight').disabled = S.cur >= n - 1;
-    if (document.activeElement !== $('#tName')) $('#tName').value = S.name || '';
-    $('#progHelp').textContent = n < 2
-      ? 'Un seul tour pour l\'instant. « Nouveau tour » en ajoute un : ils s\'enchaînent sans repasser par ce menu.'
-      : 'Tu modifies le tour ' + (S.cur + 1) + ' sur ' + n + '. Le tour démarre toujours au premier ; la télécommande permet de sauter à un autre.';
-    var nx = hasNext();
-    $('#grpAfter').hidden = !nx;
-    document.querySelectorAll('input[name=after]').forEach(function(r){ r.checked = r.value === S.after; });
-    $('#gapRow').hidden = S.after !== 'auto';
-    $('#gap').value = S.gap; $('#gapVal').textContent = S.gap > 0 ? S.gap + ' s' : 'Aucun';
-    var names = S.prog.map(function(t, i){ return tourLabel(i === S.cur ? snap() : t); });
-    $('#sumFx').textContent = n > 1 ? n + ' tours · ' + names.join(' → ') : names[0];
-    $('#sumBg').textContent = img ? 'Image chargée' : 'À importer';
-    $('#sumBg').dataset.ok = img ? '1' : '';
-    $('#sumDisp').textContent = (S.layout === '2' ? 'Page entière' : 'Standard') + (S.lockPortrait ? ' · portrait' : '');
-    var li = $('#launchInfo');
-    li.hidden = n < 2; li.textContent = n < 2 ? '' : 'Programme : ' + n + ' tours, départ au tour 1 (' + names[0] + ').';
-    if (typeof rcSum === 'function') rcSum();
-  }
   function refreshUI(){
     $('#go').disabled = !img;
     $('#openEditor').disabled = !img;
@@ -1350,40 +1358,166 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   $('#debug').addEventListener('change', function(e){ S.debug = e.target.checked; save(); });
   $('#extra').addEventListener('input', function(e){ S.extra = parseFloat(e.target.value); save(); refreshUI(); });
   $('#delay').addEventListener('input', function(e){ S.delay = parseFloat(e.target.value); save(); refreshUI(); });
-  $('#tours').addEventListener('click', function(e){ var b = e.target.closest('[data-i]'); if (b && +b.dataset.i !== S.cur) loadTour(+b.dataset.i, false); });
-  $('#tAdd').addEventListener('click', function(){
-    if (S.prog.length >= 30) return;
-    S.prog[S.cur] = snap(); S.prog.splice(S.cur + 1, 0, tourFull({effect: 'sms'}));
-    loadTour(S.cur + 1, false);
-  });
-  $('#tDup').addEventListener('click', function(){
-    if (S.prog.length >= 30) return;
-    S.prog[S.cur] = snap(); S.prog.splice(S.cur + 1, 0, Object.assign({}, snap(), {name: S.name ? S.name.slice(0, 20) + ' (2)' : ''}));
-    loadTour(S.cur + 1, false);
-  });
-  function moveTour(d){
-    var j = S.cur + d; if (j < 0 || j >= S.prog.length) return;
-    S.prog[S.cur] = snap(); var t = S.prog.splice(S.cur, 1)[0]; S.prog.splice(j, 0, t); S.cur = j; save(); refreshUI();
+  $('#autostart').addEventListener('change', function(e){ S.autostart = e.target.checked; save(); });
+  /* ---------- onglet Programmes : liste, nom, déroulé en arbre, modification d'une étape ---------- */
+  var launch = function(){};
+  var treeOpen = -1; /* lien dont le panneau de déclenchement est ouvert */
+  var esc = function(t){ return String(t).replace(/[&<>"]/g, function(c){ return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]; }); };
+  var curP = function(){ return P.list.filter(function(p){ return p.id === P.sel; })[0] || null; };
+  var FXN = {time: 'Le temps recule', sms: 'Notification SMS', card: 'Carte en fond d\'écran', clock: 'L\'heure devient…'};
+  function stepSub(t){
+    var a = [FXN[t.effect] || ''];
+    if (t.effect === 'sms') a.push('« ' + (t.smsText || '…') + ' »');
+    if (t.effect === 'clock') a.push(t.clockT);
+    if (t.effect === 'time') a.push(t.mode === 'step' ? 'cran par cran' : t.duration + ' s');
+    if (t.effect === 'card' && t.cardMorph) a.push('secousse → ' + cardShort(t.card2));
+    if (t.delay > 0) a.push('délai ' + t.delay + ' s');
+    return a.join(' · ');
   }
-  $('#tLeft').addEventListener('click', function(){ moveTour(-1); });
-  $('#tRight').addEventListener('click', function(){ moveTour(1); });
-  $('#tDel').addEventListener('click', function(){
-    if (S.prog.length < 2 || !confirm('Supprimer le tour « ' + tourLabel(snap()) + ' » ?')) return;
-    S.prog.splice(S.cur, 1); var i = Math.min(S.cur, S.prog.length - 1);
-    S.cur = i; Object.assign(S, tourFull(S.prog[i])); save(); refreshUI();
+  var TRIG = {touch: 'Au toucher', time: 'Après un temps', shake: 'En secouant'};
+  function trigText(t){ return t.trig === 'time' ? 'Après ' + t.gap + ' s' : TRIG[t.trig]; }
+  /* le bouton « Lancer » du bas suit la rubrique ouverte : dans Programmes, il lance le programme choisi */
+  function goProg(){ var p = curP(); return $('#catProg').open && p && p.steps.length ? p.id : ''; }
+  function renderProg(){
+    var p = curP(), h = '';
+    P.list.forEach(function(q){ h += '<button class="chip" type="button" data-pid="' + q.id + '" aria-pressed="' + (q.id === P.sel) + '">' + esc(q.name || 'Sans nom') + '</button>'; });
+    h += '<button class="chip" type="button" id="pNew">+ Nouveau programme</button>';
+    var pl = $('#plist'); if (pl.dataset.h !== h){ pl.innerHTML = h; pl.dataset.h = h; }
+    $('#pbox').hidden = !p; $('#treeGrp').hidden = !p;
+    if (p){
+      if (document.activeElement !== $('#pName')) $('#pName').value = p.name;
+      var n = p.steps.length, t = '';
+      p.steps.forEach(function(st, i){
+        if (i > 0){
+          t += '<li class="lk' + '"><button class="trig" type="button" data-lk="' + i + '" aria-expanded="' + (treeOpen === i) + '">↓ ' + esc(trigText(st)) + '</button>';
+          if (treeOpen === i){
+            t += '<div class="tpanel"><div class="seg" role="radiogroup" aria-label="Déclenchement">';
+            ['touch', 'time', 'shake'].forEach(function(k){
+              t += '<label><input type="radio" name="trig" value="' + k + '"' + (st.trig === k ? ' checked' : '') + '><span><strong>' + TRIG[k] + '</strong><small>' +
+                (k === 'touch' ? 'Un toucher joue l\'étape.' : k === 'time' ? 'Elle démarre toute seule.' : 'Secoue le téléphone.') + '</small></span></label>';
+            });
+            t += '</div>';
+            if (st.trig === 'time') t += '<div class="row"><label for="gapR">Temps après l\'étape précédente</label><output>' + (st.gap > 0 ? st.gap + ' s' : 'Aucun') + '</output><input id="gapR" type="range" min="0" max="60" step="1" value="' + st.gap + '"></div>';
+            if (st.trig === 'shake') t += '<p class="help">Le capteur est autorisé quand tu lances le programme. Sans capteur, le toucher ou la télécommande prend le relais.</p>';
+            t += '</div>';
+          }
+          t += '</li>';
+        }
+        t += '<li class="nd-li' + (i === 0 ? ' first' : '') + (i === n - 1 ? ' last' : '') + '"><span class="dot">' + (i + 1) + '</span><div class="nd"><button class="card" type="button" data-ed="' + i + '"><strong>' + esc(stepLabel(st)) + '</strong><small>' + esc(stepSub(st)) + '</small></button>' +
+          '<div class="nact"><button type="button" data-mv="' + i + ':-1" aria-label="Monter"' + (i === 0 ? ' disabled' : '') + '>▲</button><button type="button" data-mv="' + i + ':1" aria-label="Descendre"' + (i === n - 1 ? ' disabled' : '') + '>▼</button><button type="button" data-rm="' + i + '" aria-label="Supprimer l\'étape">✕</button></div></div></li>';
+      });
+      t += '<li class="ad"><span class="dot" style="border-style:dashed">+</span><button class="chip" type="button" id="pAdd">' + (n ? 'Ajouter une étape' : 'Choisir le premier tour') + '</button></li>';
+      var tree = $('#tree'); if (tree.dataset.h !== t){ tree.innerHTML = t; tree.dataset.h = t; }
+      $('#pGo').disabled = !img || !n; $('#pGo').textContent = n ? 'Lancer « ' + (p.name || 'Sans nom') + ' »' : 'Ajoute une étape pour lancer';
+      $('#pDel').disabled = false;
+    }
+    var gp = goProg(), pp = curP();
+    $('#go').textContent = gp ? 'Lancer « ' + (pp.name || 'Sans nom') + ' »' : 'Lancer le tour';
+    var li = $('#launchInfo'); li.hidden = !gp; li.textContent = gp ? 'Programme de ' + pp.steps.length + ' étape' + (pp.steps.length > 1 ? 's' : '') + ' · au premier toucher, l\'étape 1 se joue.' : '';
+    /* résumés des rubriques fermées */
+    $('#sumProg').textContent = P.list.length ? P.list.length + ' programme' + (P.list.length > 1 ? 's' : '') : 'Aucun';
+    $('#sumBg').textContent = img ? 'Image chargée' : 'À importer'; $('#sumBg').dataset.ok = img ? '1' : '';
+    $('#sumFx').textContent = FXN[S.effect] + (S.effect === 'time' ? ' · ' + S.minutes + ' min' : '');
+    $('#sumDisp').textContent = (S.layout === '2' ? 'Page entière' : 'Standard') + (S.lockPortrait ? ' · portrait' : '');
+    rcSum();
+  }
+  function rcSum(){
+    var el = $('#sumRc'); if (!el || !RC) return;
+    var ok = RC.on && rcNet === 'online' && rcSeen && Date.now() - rcSeen < 200000;
+    el.textContent = !RC.on ? 'Désactivée' : ok ? 'Connectée' : rcNet === 'online' ? 'En attente' : 'Hors ligne';
+    el.dataset.ok = ok ? '1' : '';
+  }
+  function newProgram(){
+    var p = {id: uid(), name: 'Programme ' + (P.list.length + 1), steps: []}; P.list.push(p); P.sel = p.id; treeOpen = -1; saveP(); refreshUI();
+    setTimeout(function(){ try { $('#pName').focus(); $('#pName').select(); } catch(e){} }, 60);
+  }
+  function addStep(){
+    var p = curP(); if (!p || p.steps.length >= 40) return;
+    var st = stepFull({effect: p.steps.length ? 'sms' : 'card'}); st.trig = 'touch'; st.gap = 5;
+    p.steps.push(st); saveP(); editStep(p.steps.length - 1);
+  }
+  /* modifier une étape : on réutilise tout l'écran des Effets, sur les réglages de cette étape */
+  var stepBackup = null;
+  function editStep(i){
+    var p = curP(); if (!p || !p.steps[i]) return;
+    stepBackup = snap(); ectx = {p: p, i: i};
+    Object.assign(S, stepFull(p.steps[i]));
+    setup.classList.add('stepEdit'); $('#stepBar').hidden = false;
+    $('#stepT1').textContent = 'Étape ' + (i + 1) + ' · ' + (p.name || 'Sans nom');
+    $('#stepT2').textContent = 'Les réglages ci-dessous sont ceux de cette étape.';
+    $('#catFx').open = true; window.scrollTo(0, 0); refreshUI();
+  }
+  function endEdit(){
+    if (!ectx) return;
+    var p = ectx.p, i = ectx.i;
+    Object.assign(p.steps[i], snap()); saveP();
+    Object.assign(S, stepBackup); ectx = null; stepBackup = null;
+    setup.classList.remove('stepEdit'); $('#stepBar').hidden = true;
+    $('#catProg').open = true; refreshUI();
+    setTimeout(function(){ try { $('#catProg').scrollIntoView({block: 'start'}); } catch(e){} }, 30);
+  }
+  $('#stepDone').addEventListener('click', endEdit);
+  $('#plist').addEventListener('click', function(e){
+    if (e.target.closest('#pNew')){ newProgram(); return; }
+    var b = e.target.closest('[data-pid]'); if (b){ P.sel = b.dataset.pid; treeOpen = -1; saveP(); refreshUI(); }
   });
-  $('#tName').addEventListener('input', function(e){ S.name = e.target.value.slice(0, 24); save(); renderProg(); });
-  document.querySelectorAll('input[name=after]').forEach(function(r){ r.addEventListener('change', function(){ if (r.checked){ S.after = r.value; save(); refreshUI(); } }); });
-  $('#gap').addEventListener('input', function(e){ S.gap = parseInt(e.target.value, 10) || 0; save(); refreshUI(); });
-  /* un seul rubrique ouverte à la fois : le menu reste court */
+  $('#pName').addEventListener('input', function(e){ var p = curP(); if (p){ p.name = e.target.value.slice(0, 30); saveP(); renderProg(); } });
+  $('#tree').addEventListener('click', function(e){
+    var p = curP(); if (!p) return;
+    if (e.target.closest('#pAdd')){ addStep(); return; }
+    var c = e.target.closest('[data-ed]'); if (c){ editStep(+c.dataset.ed); return; }
+    var l = e.target.closest('[data-lk]'); if (l){ var k = +l.dataset.lk; treeOpen = treeOpen === k ? -1 : k; renderProg(); return; }
+    var m = e.target.closest('[data-mv]');
+    if (m){
+      var a = m.dataset.mv.split(':'), i = +a[0], j = i + +a[1];
+      if (j >= 0 && j < p.steps.length){
+        var t = p.steps.splice(i, 1)[0]; p.steps.splice(j, 0, t);
+        /* le déclenchement reste attaché à sa place : la première étape n'en a pas */
+        p.steps[0].trig = 'touch'; treeOpen = -1; saveP(); renderProg();
+      }
+      return;
+    }
+    var r = e.target.closest('[data-rm]');
+    if (r){
+      var ri = +r.dataset.rm;
+      if (!confirm('Supprimer l\'étape ' + (ri + 1) + ' (' + stepLabel(p.steps[ri]) + ') ?')) return;
+      p.steps.splice(ri, 1); if (p.steps[0]) p.steps[0].trig = 'touch'; treeOpen = -1; saveP(); renderProg();
+    }
+  });
+  $('#tree').addEventListener('change', function(e){
+    var p = curP(), r = e.target.closest('input[name=trig]'); if (!p || !r || !p.steps[treeOpen]) return;
+    p.steps[treeOpen].trig = r.value; saveP(); renderProg();
+  });
+  $('#tree').addEventListener('input', function(e){
+    var p = curP(); if (!p || e.target.id !== 'gapR' || !p.steps[treeOpen]) return;
+    p.steps[treeOpen].gap = parseInt(e.target.value, 10) || 0; saveP();
+    var o = e.target.parentNode.querySelector('output'); if (o) o.textContent = p.steps[treeOpen].gap > 0 ? p.steps[treeOpen].gap + ' s' : 'Aucun';
+    var tb = $('#tree').querySelector('[data-lk="' + treeOpen + '"]'); if (tb) tb.textContent = '↓ ' + trigText(p.steps[treeOpen]);
+    $('#tree').dataset.h = '';
+  });
+  $('#pDup').addEventListener('click', function(){
+    var p = curP(); if (!p || P.list.length >= 30) return;
+    var q = JSON.parse(JSON.stringify(p)); q.id = uid(); q.name = (p.name + ' (copie)').slice(0, 30);
+    P.list.splice(P.list.indexOf(p) + 1, 0, q); P.sel = q.id; saveP(); refreshUI();
+  });
+  $('#pDel').addEventListener('click', function(){
+    var p = curP(); if (!p || !confirm('Supprimer le programme « ' + (p.name || 'Sans nom') + ' » ?')) return;
+    var k = P.list.indexOf(p); P.list.splice(k, 1); P.sel = P.list.length ? P.list[Math.min(k, P.list.length - 1)].id : ''; treeOpen = -1;
+    if (S.last === p.id){ S.last = ''; save(); }
+    saveP(); refreshUI();
+  });
+  $('#pGo').addEventListener('click', function(ev){ var p = curP(); if (p && p.steps.length) launch(ev, p.id); });
+  /* une seule rubrique ouverte à la fois : le menu reste court */
   document.querySelectorAll('details.cat').forEach(function(d){
     d.addEventListener('toggle', function(){
-      if (!d.open) return;
-      document.querySelectorAll('details.cat').forEach(function(o){ if (o !== d && o.open) o.open = false; });
-      try { d.scrollIntoView({block: 'start', behavior: 'smooth'}); } catch(e){}
+      if (d.open){
+        document.querySelectorAll('details.cat').forEach(function(o){ if (o !== d && o.open) o.open = false; });
+        if (!ectx) try { d.scrollIntoView({block: 'start', behavior: 'smooth'}); } catch(e){}
+      }
+      renderProg();
     });
   });
-  $('#autostart').addEventListener('change', function(e){ S.autostart = e.target.checked; save(); });
+
   $('#resetClock').addEventListener('click', function(){
     ['x','y','size','color','showDate','fill','font','weight','width','spacing','h12','zero','cstyle','copacity','shadow','dateFmt','dateSize'].forEach(function(k){ S[k] = DEF[k]; });
     S.zones = DEF_ZONES.map(function(z){ return Object.assign({}, z); });
@@ -1680,7 +1814,10 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   function resetCard(){ cancelAnimationFrame(flickRaf); flickX = 0; flickY = 0; cancelAnimationFrame(cardRaf); cancelAnimationFrame(morphRaf); cardCur = S.card; morphQ = 0; cardOn = false; cardA = 0; mo.x = mo.y = mo.vx = mo.vy = mo.r = mo.vr = 0; }
   /* mouvement : la carte réagit aux secousses et à l'inclinaison du téléphone */
   var mo = {x: 0, y: 0, vx: 0, vy: 0, r: 0, vr: 0, tx: 0, ty: 0, on: false, raf: 0, last: 0, ref: null, perm: false, gx: 0, gy: 0, gz: 0};
-  function motionWanted(){ return S.effect === 'card' && (!!S.cardMotion || !!S.cardMorph); }
+  function motionWanted(){
+    if (progRun) return progRun.steps.some(function(t, i){ return (t.effect === 'card' && (t.cardMotion || t.cardMorph)) || (i > 0 && t.trig === 'shake'); });
+    return S.effect === 'card' && (!!S.cardMotion || !!S.cardMorph);
+  }
   function needMotionPrompt(){
     return motionWanted() && typeof window.DeviceMotionEvent !== 'undefined' && typeof window.DeviceMotionEvent.requestPermission === 'function' && !mo.perm;
   }
@@ -1794,9 +1931,9 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     mo.ty = clamp((e.beta - mo.ref.b) / 40, -1, 1) * .08 * K * sg;
     moKick();
   }
-  function enableMotion(){ if (mo.on) return; mo.on = true; window.addEventListener('devicemotion', onDM); window.addEventListener('deviceorientation', onDO); }
+  function enableMotion(){ if (mo.on) return; mo.on = true; window.addEventListener('devicemotion', onDM); window.addEventListener('devicemotion', onShakeDM); window.addEventListener('deviceorientation', onDO); }
   function disableMotion(){
-    mo.on = false; window.removeEventListener('devicemotion', onDM); window.removeEventListener('deviceorientation', onDO);
+    mo.on = false; window.removeEventListener('devicemotion', onDM); window.removeEventListener('devicemotion', onShakeDM); window.removeEventListener('deviceorientation', onDO);
     cancelAnimationFrame(mo.raf); mo.raf = 0; mo.ref = null; mo.tx = mo.ty = 0;
   }
   function startMotion(fromClick){
@@ -1896,52 +2033,65 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     try { navigator.vibrate && navigator.vibrate(200); } catch(e){}
   }
   function hideSms(){ smsOn = false; notif.classList.remove('on'); }
-  /* ---------- programme : passage d'un tour au suivant ---------- */
-  var chainT = 0, chaining = false, chainW = 0;
-  var hasNext = function(){ return S.cur < S.prog.length - 1; };
-  var SUIT = {S: '♠\uFE0E', H: '♥\uFE0E', D: '♦\uFE0E', C: '♣\uFE0E'};
+  /* ---------- programme en cours : passage d'une étape à la suivante ---------- */
+  var chainT = 0, chaining = false, chainW = 0, shAt = 0, shG = {x: 0, y: 0, z: 0};
+  var SUIT = {S: '♠︎', H: '♥︎', D: '♦︎', C: '♣︎'};
   function cardShort(c){
     var sp = {BR: 'Dos rouge', BB: 'Dos bleu', BL: 'Blanche', JKC: 'Joker', JKB: 'Joker'};
     return sp[c] || (String(c).slice(0, -1) + (SUIT[String(c).slice(-1)] || ''));
   }
-  function tourLabel(t){
-    if (t.name) return t.name;
+  function stepLabel(t){
     return t.effect === 'sms' ? 'SMS' : t.effect === 'card' ? 'Carte ' + cardShort(t.card) : t.effect === 'clock' ? 'Heure ' + t.clockT : 'Temps −' + t.minutes + ' min';
   }
-  function tourDone(){
+  var pHasNext = function(){ return !!progRun && progRun.i < progRun.steps.length - 1; };
+  var pNext = function(){ return pHasNext() ? progRun.steps[progRun.i + 1] : null; };
+  function stepDone(){
     if (!running || busy || chaining) return false;
     var p = rcPhase(); return p === 'done' || p === 'on';
   }
   function cancelChain(){ clearTimeout(chainT); chainT = 0; clearInterval(chainW); chainW = 0; chaining = false; }
-  /* charge le tour i : ses réglages remplacent ceux du tour courant ; en mode tour il est armé, et joué tout de suite si play */
-  function loadTour(i, play){
-    i = clamp(i, 0, S.prog.length - 1);
-    S.prog[S.cur] = snap(); S.cur = i; Object.assign(S, tourFull(S.prog[i]));
-    S.minutes = clamp(parseInt(S.minutes, 10) || DEF.minutes, 1, 720);
-    save();
-    if (running){ cancelChain(); rearm(); if (play) rewindOne(); }
-    else refreshUI();
+  /* charge l'étape i ; elle est armée, et jouée tout de suite si play */
+  function loadStep(i, play){
+    if (!progRun) return;
+    cancelChain();
+    progRun.i = clamp(i, 0, progRun.steps.length - 1); progRun.played = false;
+    Object.assign(S, stepFull(progRun.steps[progRun.i]));
+    rearm(); if (play) rewindOne();
   }
-  /* retire proprement l'effet affiché, puis charge et joue le tour suivant */
+  /* retire proprement l'effet affiché, puis joue l'étape suivante */
   function chainGo(){
-    if (!running || !hasNext() || chaining) return;
+    if (!running || !pHasNext() || chaining) return;
     clearTimeout(chainT); chainT = 0; chaining = true;
     var tries = 0;
-    function next(){ chaining = false; if (running && hasNext()) loadTour(S.cur + 1, true); }
+    function next(){ chaining = false; if (running && pHasNext()) loadStep(progRun.i + 1, true); }
     if ((S.effect === 'card' && cardOn) || (S.effect === 'clock' && clockOn)){
       rewindOne();
       chainW = setInterval(function(){ if (!busy || ++tries > 120){ clearInterval(chainW); chainW = 0; next(); } }, 60);
     } else { if (smsOn) hideSms(); next(); }
   }
-  /* « Automatiquement » : une fois le tour joué, le suivant démarre après le délai réglé */
+  /* surveille « étape jouée », et le déclenchement « après un temps » */
   setInterval(function(){
-    if (!running || !hasNext() || S.after !== 'auto'){ if (chainT){ clearTimeout(chainT); chainT = 0; } return; }
-    if (tourDone()){ if (!chainT) chainT = setTimeout(function(){ chainT = 0; if (tourDone()) chainGo(); }, S.gap * 1000); }
-    else if (chainT){ clearTimeout(chainT); chainT = 0; }
+    if (!progRun || !running){ if (chainT){ clearTimeout(chainT); chainT = 0; } return; }
+    if (!progRun.played && stepDone()) progRun.played = true;
+    var nx = pNext();
+    if (progRun.played && nx && nx.trig === 'time' && !chainT && !chaining) chainT = setTimeout(function(){ chainT = 0; chainGo(); }, nx.gap * 1000);
   }, 150);
-  /* le toucher : quand le tour est joué et qu'il y en a un autre, il passe au suivant ; sinon l'effet normal */
+  /* secouer : déclenche l'étape suivante quand elle est réglée ainsi */
+  function onShakeDM(e){
+    if (!progRun || !progRun.played || chaining) return;
+    var nx = pNext(); if (!nx || nx.trig !== 'shake') return;
+    var a = e.acceleration, g = e.accelerationIncludingGravity, ax = 0, ay = 0, az = 0;
+    if (a && a.x != null){ ax = a.x; ay = a.y; az = a.z || 0; }
+    else if (g && g.x != null){ shG.x = shG.x * .9 + g.x * .1; shG.y = shG.y * .9 + g.y * .1; shG.z = shG.z * .9 + (g.z || 0) * .1; ax = g.x - shG.x; ay = g.y - shG.y; az = (g.z || 0) - shG.z; }
+    var now = Date.now();
+    if (Math.sqrt(ax * ax + ay * ay + az * az) > 13 / clamp(S.morphK, .3, 3) && now - shAt > 1000){ shAt = now; chainGo(); }
+  }
+  /* le toucher : si l'étape suivante se déclenche au toucher (ou en secouant sans capteur), il la joue ; sinon effet normal */
   function rewind(){
-    if (tourDone() && hasNext()){ chainGo(); return; }
+    if (progRun && progRun.played && pHasNext()){
+      var t = pNext().trig;
+      if (t === 'touch' || (t === 'shake' && !mo.on)){ chainGo(); return; }
+    }
     rewindOne();
   }
   function rewindOne(){
@@ -1992,13 +2142,20 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     }
     rafId = requestAnimationFrame(tick);
   }
-  function rearm(){ resetCard(); cancelAnimationFrame(rafId); rafId = 0; cancelAnimationFrame(rollRaf); clk = null; clockOn = false; rollQ = 1; clearTimeout(timer); timer = null; busy = false; hideSms(); offset = startOff(); frame(); }
+  function rearm(){ if (progRun) progRun.played = false; resetCard(); cancelAnimationFrame(rafId); rafId = 0; cancelAnimationFrame(rollRaf); clk = null; clockOn = false; rollQ = 1; clearTimeout(timer); timer = null; busy = false; hideSms(); offset = startOff(); frame(); }
 
   function lock(){ try { var p = navigator.wakeLock && navigator.wakeLock.request('screen'); if (p) p.then(function(l){ wl = l; }).catch(function(){}); } catch(e){} }
-  function enter(ev){
+  function enter(ev, pid){
     if (!img) return;
-    cancelChain(); if (S.cur !== 0){ S.prog[S.cur] = snap(); S.cur = 0; Object.assign(S, tourFull(S.prog[0])); }
-    save(); running = true; busy = false; clockOn = false; clk = null; rollQ = 1; hideSms(); resetCard(); offset = startOff();
+    cancelChain();
+    if (progRun){ Object.assign(S, progRun.backup); progRun = null; }
+    var pr = pid && P.list.filter(function(p){ return p.id === pid; })[0];
+    S.last = pr && pr.steps.length ? pr.id : ''; save();
+    if (S.last){
+      progRun = {id: pr.id, name: pr.name, steps: JSON.parse(JSON.stringify(pr.steps)), i: 0, played: false, backup: snap()};
+      Object.assign(S, stepFull(progRun.steps[0]));
+    }
+    running = true; busy = false; clockOn = false; clk = null; rollQ = 1; hideSms(); resetCard(); offset = startOff();
     setTourClass(true);
     setup.hidden = true; stage.hidden = false; window.scrollTo(0, 0);
     fitStage(); lock(); startMotion(!!(ev && ev.isTrusted));
@@ -2014,6 +2171,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     try { if (wl) wl.release(); } catch(e){} wl = null;
     try { if (document.fullscreenElement) document.exitFullscreen(); } catch(e){}
     try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch(e){}
+    if (progRun){ Object.assign(S, progRun.backup); progRun = null; }
     setTourClass(false);
     stage.hidden = true; setup.hidden = false; refreshUI();
   }
@@ -2036,8 +2194,8 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
       go.appendChild(d); setTimeout(function(){ if (d.parentNode) d.parentNode.removeChild(d); }, 650);
       try { navigator.vibrate && navigator.vibrate(12); } catch(err){}
     });
-    go.addEventListener('click', function(ev){
-      enter(ev);
+    launch = function(ev, pid){
+      enter(ev, pid);
       if (!running){ return; }
       stage.classList.remove('entering'); void stage.offsetWidth; stage.classList.add('entering');
       setTimeout(function(){ stage.classList.remove('entering'); }, 600);
@@ -2045,7 +2203,8 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
         clearTimeout(pillT); pill.classList.add('on');
         pillT = setTimeout(function(){ pill.classList.remove('on'); }, 1400);
       }
-    });
+    };
+    go.addEventListener('click', function(ev){ launch(ev, goProg()); });
     window.addEventListener('pagehide', function(){ pill.classList.remove('on'); });
   })();
 
@@ -2119,7 +2278,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   }, 250);
 
   /* version et mode hors ligne */
-  var VERSION = '45', offlineReady = false;
+  var VERSION = '46', offlineReady = false;
   function buildNote(){ $('#buildNote').textContent = 'Version ' + VERSION + (offlineReady ? ' · prête hors ligne' : ''); }
   buildNote();
   try {
@@ -2152,7 +2311,6 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
       var p = v.split('-'), d = new Date(+p[0], +p[1] - 1, +p[2]);
       return d.getFullYear() === +p[0] && d.getMonth() === +p[1] - 1 && d.getDate() === +p[2] ? v : undefined;
     },
-    after: function(v){ return v === 'touch' || v === 'auto' ? v : undefined; }, gap: rcInt(0, 120),
     minutes: rcInt(1, 720), mode: function(v){ return v === 'auto' || v === 'step' ? v : undefined; }, duration: rcInt(2, 20),
     delay: rcSec, delay2: rcSec,
     smsFrom: rcStr(40), smsText: rcStr(120), smsSound: rcBool,
@@ -2165,13 +2323,16 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     return busy ? 'busy' : cardOn ? 'on' : 'armed';
   }
   function rcState(re){
-    var st = {k: 'state', v: VERSION, run: running, fx: S.effect, ph: rcPhase(), left: Math.max(0, offset), cfg: {},
-      tour: {i: S.cur, n: S.prog.length, names: S.prog.map(function(t, i){ return tourLabel(i === S.cur ? snap() : t); })}};
+    var st = {k: 'state', v: VERSION, run: running, fx: S.effect, ph: rcPhase(), left: Math.max(0, offset), cfg: {}};
+    if (progRun){
+      var nx = pNext();
+      st.tour = {i: progRun.i, n: progRun.steps.length, pn: progRun.name, names: progRun.steps.map(stepLabel), nt: nx ? nx.trig : '', gap: nx ? nx.gap : 0, pl: !!progRun.played};
+    }
     Object.keys(RC_SET).forEach(function(k){ st.cfg[k] = S[k]; });
     if (re) st.re = re;
     return st;
   }
-  function rcSigOf(st){ return [st.run, st.fx, st.ph, st.fx === 'time' && S.mode === 'step' ? st.left : 0, st.tour.i, st.tour.n].join('|'); }
+  function rcSigOf(st){ return [st.run, st.fx, st.ph, st.fx === 'time' && S.mode === 'step' ? st.left : 0, st.tour ? st.tour.i + '/' + st.tour.n : ''].join('|'); }
   function rcReply(re){ if (!rcConn) return; var st = rcState(re); rcSig = rcSigOf(st); rcLast = Date.now(); rcConn.send(st); }
   function rcApply(set){
     if (!set || typeof set !== 'object') return;
@@ -2199,7 +2360,8 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
       case 'touch': if (running) rewind(); break;
       case 'rearm': if (running) rearm(); break;
       case 'morph': if (running) doMorph(); break;
-      case 'goto': if (running && typeof m.i === 'number') loadTour(Math.floor(m.i), false); break;
+      case 'goto': if (running && progRun && typeof m.i === 'number') loadStep(Math.floor(m.i), false); break;
+      case 'next': if (running && pHasNext()) chainGo(); break;
       case 'show': if (running && typeof m.card === 'string') showCard(m.card.slice(0, 4)); break;
       default: return;
     }
@@ -2241,12 +2403,6 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     $('#rcStatus').dataset.s = st; $('#rcStatusTxt').textContent = txt;
     $('#rcState').textContent = rcSeen ? 'Dernier signe de la télécommande : il y a ' + agoTxt + '.' : '';
   }
-  function rcSum(){
-    var el = $('#sumRc'); if (!el || !RC) return;
-    var ok = RC.on && rcNet === 'online' && rcSeen && Date.now() - rcSeen < 200000;
-    el.textContent = !RC.on ? 'Désactivée' : ok ? 'Connectée' : rcNet === 'online' ? 'En attente' : 'Hors ligne';
-    el.dataset.ok = ok ? '1' : '';
-  }
   function rcCopy(txt, btn){
     var done = function(){ var o = btn.textContent; btn.textContent = 'Copié'; setTimeout(function(){ btn.textContent = o; }, 1200); };
     try { navigator.clipboard.writeText(txt).then(done, function(){}); } catch(e){}
@@ -2286,7 +2442,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     .then(function(u){ if (u) return loadImg(u).then(function(i){ rawImg = i; rawVer++; }); })
     .catch(function(){})
     .then(function(){
-      if (img && S.autostart) enter(); else { setup.hidden = false; refreshUI(); }
+      if (img && S.autostart) enter(undefined, S.last); else { setup.hidden = false; refreshUI(); }
       refreshUI();
     });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(updatePreview);
