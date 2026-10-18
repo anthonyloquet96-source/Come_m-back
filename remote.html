@@ -68,6 +68,12 @@ label.l{font-size:14px;color:var(--mute)}
 .foot{text-align:center;padding:6px 0 2px}
 .linkbtn{appearance:none;background:none;border:0;color:var(--mute);font:14px -apple-system,system-ui,sans-serif;text-decoration:underline;padding:10px;cursor:pointer}
 .code{letter-spacing:.08em;text-transform:uppercase;font-family:ui-monospace,Menlo,monospace;text-align:center}
+.tourbar{display:flex;flex-direction:column;gap:8px}
+.tourhead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font:600 12px/1.2 var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--brass)}
+.tourhead .tourhint{font-weight:400;letter-spacing:0;text-transform:none;color:var(--mute)}
+.tourchips{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 8px;scroll-snap-type:x proximity}
+.tourchips .chip{flex:none;scroll-snap-align:center;max-width:70vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tourchips .chip b{color:var(--brass);font-weight:600;margin-right:6px}
 </style>
 </head>
 <body>
@@ -96,6 +102,10 @@ label.l{font-size:14px;color:var(--mute)}
   <section id="ctl" hidden style="display:flex;flex-direction:column;gap:12px">
     <div class="bar" id="bar" role="button" aria-label="Tester la liaison"><span class="dot" id="dot"></span><span class="txt" id="barTxt">Connexion…</span></div>
     <p class="phase" id="phase"></p>
+    <div class="tourbar" id="tourBar" hidden>
+      <div class="tourhead"><span id="tourNo"></span><span class="tourhint">Touche un tour pour l'armer</span></div>
+      <div class="tourchips" id="tourChips" role="tablist" aria-label="Tours du programme"></div>
+    </div>
 
     <button class="btn solid" id="touch" type="button">Toucher</button>
     <div class="row2">
@@ -169,6 +179,15 @@ label.l{font-size:14px;color:var(--mute)}
       <label class="check"><input id="cardMorph" type="checkbox">Une secousse change la carte</label>
     </div>
 
+    <div class="grp" id="gAfter" hidden>
+      <h2>Ensuite : tour suivant</h2>
+      <div class="seg" id="afterSeg">
+        <button class="chip" type="button" data-after="touch">Au toucher</button>
+        <button class="chip" type="button" data-after="auto">Automatique</button>
+      </div>
+      <div class="rng" id="gapRow"><label for="gap">Délai avant le suivant</label><output id="gapOut"></output><input id="gap" type="range" min="0" max="60" step="1"></div>
+    </div>
+
     <div class="grp" id="gDelay">
       <h2>Délais</h2>
       <div class="rng"><label for="delay" id="delayLbl">Délai avant l'effet</label><output id="delayOut"></output><input id="delay" type="range" min="0" max="15" step="0.5"></div>
@@ -192,7 +211,7 @@ label.l{font-size:14px;color:var(--mute)}
   try { direct = localStorage.getItem('marche-arriere-remote-direct') === '1'; } catch(e){}
   var secret = null, conn = null, st = null, lastSeen = 0, net = 'connecting', slot = 1, patch = {}, patchT = 0;
   var pend = {}, toastT = 0, wl = null;
-  var DEF = {effect: 'time', minutes: 10, mode: 'auto', duration: 5, delay: 0, delay2: 0, smsFrom: 'Messages', smsText: '', smsSound: true, card: 'AS', card2: '7H', cardMorph: false, clockT: '12:00', clockD: ''};
+  var DEF = {effect: 'time', minutes: 10, mode: 'auto', duration: 5, delay: 0, delay2: 0, smsFrom: 'Messages', smsText: '', smsSound: true, card: 'AS', card2: '7H', cardMorph: false, clockT: '12:00', clockD: '', after: 'touch', gap: 5};
   var cfg = Object.assign({}, DEF);
 
   function clamp(v, a, b){ return Math.min(b, Math.max(a, v)); }
@@ -310,7 +329,8 @@ label.l{font-size:14px;color:var(--mute)}
   function phaseText(){
     if (!st) return '';
     if (st.run === false) return 'Lance le tour sur le téléphone de la salle';
-    var p = st.ph, m = cfg.minutes;
+    var p = st.ph, m = cfg.minutes, tr = st.tour, nx = tr && tr.i < tr.n - 1 ? tr.names[tr.i + 1] : '';
+    if (nx && (p === 'done' || p === 'on')) return 'Joué · ' + (cfg.after === 'auto' ? 'suivant automatique : « ' : 'le toucher lance « ') + nx + ' »';
     if (st.fx === 'time') return p === 'armed' ? 'Armé · ' + m + ' min à reculer' : p === 'busy' ? 'Recul en cours…' : p === 'partial' ? 'Recul partiel · il reste ' + st.left + ' min' : 'Terminé · réarme pour recommencer';
     if (st.fx === 'sms') return p === 'armed' ? 'Prêt · le SMS n\'est pas arrivé' : p === 'busy' ? 'Délai en cours…' : 'SMS affiché · réarme pour le retirer';
     if (st.fx === 'clock') return p === 'armed' ? 'Armé · l\'heure passera à ' + cfg.clockT : p === 'busy' ? 'Changement en cours…' : 'Heure changée · touche pour rétablir';
@@ -326,6 +346,17 @@ label.l{font-size:14px;color:var(--mute)}
     var fx = (st && st.fx) || cfg.effect;
     if (patch.effect) fx = patch.effect;
     $('#phase').textContent = phaseText();
+    var tr = st && st.tour, multi = !!(tr && tr.n > 1);
+    $('#tourBar').hidden = !multi;
+    if (multi){
+      $('#tourNo').textContent = 'Tour ' + (tr.i + 1) + ' sur ' + tr.n;
+      var h = tr.names.map(function(n, i){ return '<button class="chip" type="button" role="tab" data-i="' + i + '" aria-pressed="' + (i === tr.i) + '"><b>' + (i + 1) + '</b>' + n.replace(/[&<>"]/g, function(c){ return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]; }) + '</button>'; }).join('');
+      var box = $('#tourChips');
+      if (box.dataset.h !== h){ box.innerHTML = h; box.dataset.h = h; var c = box.querySelector('[aria-pressed="true"]'); if (c) try { c.scrollIntoView({inline: 'center', block: 'nearest'}); } catch(e){} }
+    }
+    $('#gAfter').hidden = !(multi && tr.i < tr.n - 1);
+    pressed('#afterSeg .chip', function(b){ return b.dataset.after === cfg.after; });
+    $('#gapRow').hidden = cfg.after !== 'auto'; setVal($('#gap'), cfg.gap); $('#gapOut').textContent = secTxt(cfg.gap);
     pressed('#fxSeg .chip', function(b){ return b.dataset.fx === fx; });
     $('#gTime').hidden = fx !== 'time'; $('#gSms').hidden = fx !== 'sms'; $('#gCard').hidden = fx !== 'card'; $('#gClock').hidden = fx !== 'clock';
     $('#delay2Row').hidden = fx !== 'card' && fx !== 'clock';
@@ -356,6 +387,7 @@ label.l{font-size:14px;color:var(--mute)}
     /* boutons d'action */
     var p = st && st.ph, down = st && st.run === false;
     var lab = fx === 'clock' ? (p === 'on' ? 'Rétablir l\'heure' : 'Changer l\'heure') : fx === 'time' ? (cfg.mode === 'step' ? 'Enlever une minute' : 'Reculer') : fx === 'sms' ? 'Faire arriver le SMS' : (p === 'on' ? 'Faire disparaître la carte' : 'Faire apparaître la carte');
+    if (multi && tr.i < tr.n - 1 && (p === 'done' || p === 'on')) lab = 'Tour suivant';
     if (!$('#touch').dataset.st) $('#touch').textContent = lab; $('#touch').disabled = !!down;
     $('#rearm').disabled = !!down; $('#rearm').classList.toggle('hot', !!p && p !== 'armed' && p !== 'busy');
     $('#morph').hidden = !(fx === 'card' && cfg.cardMorph); $('#morph').disabled = !!down || p !== 'on';
@@ -404,6 +436,13 @@ label.l{font-size:14px;color:var(--mute)}
   $('#minutes').addEventListener('input', function(e){ var v = parseInt(e.target.value, 10); if (!isNaN(v)) set('minutes', clamp(v, 1, 720)); });
   $('#minutes').addEventListener('blur', render);
   $('#modeSeg').addEventListener('click', function(e){ var b = e.target.closest('.chip'); if (b) set('mode', b.dataset.mode, true); });
+  $('#tourChips').addEventListener('click', function(e){
+    var b = e.target.closest('[data-i]'); if (!b) return;
+    if (st && st.run === false){ toast('Lance le tour sur le téléphone de la salle', 2200); return; }
+    buzz(); cmd('goto', {i: +b.dataset.i}, {onack: function(){ toast('Tour ' + (+b.dataset.i + 1) + ' armé', 900); }, onfail: function(t){ toast(t, 2600); }});
+  });
+  $('#afterSeg').addEventListener('click', function(e){ var b = e.target.closest('.chip'); if (b) set('after', b.dataset.after, true); });
+  $('#gap').addEventListener('input', function(e){ set('gap', +e.target.value); });
   $('#duration').addEventListener('input', function(e){ set('duration', +e.target.value); });
   $('#delay').addEventListener('input', function(e){ set('delay', +e.target.value); });
   $('#delay2').addEventListener('input', function(e){ set('delay2', +e.target.value); });
