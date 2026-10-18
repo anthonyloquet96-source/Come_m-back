@@ -411,7 +411,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
           <label class="check"><input id="cardMorph" type="checkbox">Une secousse change la carte pour une autre</label>
           <div id="morphBox" hidden>
             <div class="row"><label for="morphK">Sensibilité de la secousse</label><output id="morphKVal"></output><input id="morphK" type="range" min="0.5" max="2.5" step="0.1"></div>
-            <p class="help" id="morphMsg">Choisis la carte d'arrivée avec le bouton « Carte après secousse » ci-dessus. Secoue le téléphone quand la carte est affichée : elle change. Elle revient à la carte de départ à la prochaine apparition.</p>
+            <p class="help" id="morphMsg">Choisis la carte de chaque secousse avec les boutons ci-dessus, et ajoute autant de secousses que tu veux (par exemple dos de carte, puis le 7 de cœur, puis une autre carte). Chaque secousse fait passer à la carte suivante. À la prochaine apparition, on repart de la carte de départ.</p>
           </div>
         </div>
         <div class="grp">
@@ -641,7 +641,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     slab: 'Rockwell,"Roboto Slab","Courier New",serif',
     mono: 'ui-monospace,"SF Mono",Menlo,Consolas,monospace'
   };
-  var DEF = {minutes:10, effect:'time', card:'AS', cardX:50, cardY:50, cardS:88, cardIdx:true, cardClock:true, lockPortrait:true, lockInv:false, cardMotion:false, cardMotionK:1, cardMorph:false, cardFlick:true, card2:'7H', clockT:'12:00', clockD:'', morphK:1, cardMotionInv:false, cardFade:'fade', delay2:0, last:'', smsFrom:'Messages', smsText:'le sept de cœur', smsY:60, smsX:50, smsS:1, smsSound:true, mode:'auto', duration:5, delay:0, autostart:true, bgMode:'mask', rawS:1, rawX:0, rawY:0, extra:0, layout:'1', debug:false, x:50, y:22.5, size:28, color:'#ffffff', showDate:true, fill:'mirror', font:'sf', weight:600, width:100, spacing:0, h12:false, zero:true, cstyle:'solid', copacity:100, shadow:false, dateFmt:'long', dateSize:20};
+  var DEF = {minutes:10, effect:'time', card:'AS', cardX:50, cardY:50, cardS:88, cardIdx:true, cardClock:true, lockPortrait:true, lockInv:false, cardMotion:false, cardMotionK:1, cardMorph:false, cardMore:[], cardFlick:true, card2:'7H', clockT:'12:00', clockD:'', morphK:1, cardMotionInv:false, cardFade:'fade', delay2:0, last:'', smsFrom:'Messages', smsText:'le sept de cœur', smsY:60, smsX:50, smsS:1, smsSound:true, mode:'auto', duration:5, delay:0, autostart:true, bgMode:'mask', rawS:1, rawX:0, rawY:0, extra:0, layout:'1', debug:false, x:50, y:22.5, size:28, color:'#ffffff', showDate:true, fill:'mirror', font:'sf', weight:600, width:100, spacing:0, h12:false, zero:true, cstyle:'solid', copacity:100, shadow:false, dateFmt:'long', dateSize:20};
   var DEF_ZONES = [{x:0, y:12, w:100, h:17}];
   var KEY = 'marche-arriere-v4';
   var S = Object.assign({}, DEF, {zones: DEF_ZONES.map(function(z){ return Object.assign({}, z); })});
@@ -660,9 +660,9 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   var PKEY = 'marche-arriere-prog-v1';
   var P = {list: [], sel: ''};
   try { var pj = JSON.parse(localStorage.getItem(PKEY) || '{}'); if (pj && Array.isArray(pj.list)) P = {list: pj.list, sel: pj.sel || ''}; } catch(e){}
-  var STEP_KEYS = ['effect','minutes','mode','duration','delay','delay2','smsFrom','smsText','smsX','smsY','smsS','smsSound','card','card2','cardX','cardY','cardS','cardIdx','cardClock','cardMotion','cardMotionK','cardMotionInv','cardMorph','cardFade','cardFlick','morphK','clockT','clockD'];
+  var STEP_KEYS = ['effect','minutes','mode','duration','delay','delay2','smsFrom','smsText','smsX','smsY','smsS','smsSound','card','card2','cardMore','cardX','cardY','cardS','cardIdx','cardClock','cardMotion','cardMotionK','cardMotionInv','cardMorph','cardFade','cardFlick','morphK','clockT','clockD'];
   function snap(){ var o = {}; STEP_KEYS.forEach(function(k){ o[k] = S[k]; }); return o; }
-  function stepFull(t){ var o = {}; STEP_KEYS.forEach(function(k){ o[k] = DEF[k]; }); o = Object.assign(o, t || {}); o.minutes = Math.min(720, Math.max(1, parseInt(o.minutes, 10) || DEF.minutes)); return o; }
+  function stepFull(t){ var o = {}; STEP_KEYS.forEach(function(k){ o[k] = DEF[k]; }); o = Object.assign(o, t || {}); o.cardMore = Array.isArray(o.cardMore) ? o.cardMore.slice(0, 8) : []; o.minutes = Math.min(720, Math.max(1, parseInt(o.minutes, 10) || DEF.minutes)); return o; }
   var uid = function(){ return 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); };
   P.list = P.list.filter(function(p){ return p && typeof p.id === 'string' && Array.isArray(p.steps); }).slice(0, 30).map(function(p){
     return {id: p.id, name: String(p.name || '').slice(0, 30), steps: p.steps.slice(0, 40).map(function(t){
@@ -1299,11 +1299,22 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     r.addEventListener('change', function(){ if (r.checked){ S.mode = r.value; save(); refreshUI(); } });
   });
   var pickSlot = 1;
-  function pc(){ return S.cardMorph && pickSlot === 2 ? S.card2 : S.card; }
+  /* suite des cartes : départ, puis une carte par secousse (jusqu'à 9 au total) */
+  function seqOf(){ return [S.card, S.card2].concat(Array.isArray(S.cardMore) ? S.cardMore : []); }
+  function setSeq(i, id){
+    if (i === 0) S.card = id; else if (i === 1) S.card2 = id;
+    else { var m = (S.cardMore || []).slice(); m[i - 2] = id; S.cardMore = m; }
+  }
+  function pc(){ var q = seqOf(); return S.cardMorph ? (q[pickSlot - 1] || q[0]) : S.card; }
   function syncCard(){
-    if (!S.cardMorph) pickSlot = 1;
+    if (!S.cardMorph || pickSlot > seqOf().length) pickSlot = 1;
+    var qn = seqOf().length, sh = '<button class="chip" type="button" data-slot="1">Carte de départ</button>';
+    for (var si = 2; si <= qn; si++) sh += '<button class="chip" type="button" data-slot="' + si + '">' + (qn > 2 ? 'Secousse ' + (si - 1) : 'Après secousse') + '</button>';
+    if (qn < 9) sh += '<button class="chip" type="button" data-add="1">+ Une autre secousse</button>';
+    if (qn > 2) sh += '<button class="chip" type="button" data-rmlast="1">Retirer la dernière</button>';
+    if ($('#slotChips').dataset.h !== sh){ $('#slotChips').innerHTML = sh; $('#slotChips').dataset.h = sh; }
     $('#morphBox').hidden = !S.cardMorph; $('#slotChips').hidden = !S.cardMorph; $('#cardMorph').checked = !!S.cardMorph; $('#morphK').value = S.morphK; $('#morphKVal').textContent = S.morphK;
-    document.querySelectorAll('#slotChips .chip').forEach(function(c){ c.setAttribute('aria-pressed', String(+c.dataset.slot === pickSlot)); });
+    document.querySelectorAll('#slotChips .chip[data-slot]').forEach(function(c){ c.setAttribute('aria-pressed', String(+c.dataset.slot === pickSlot)); });
     var std = !/^(BR|BB|BL|JKC|JKB)$/.test(pc()), cs = std ? pc().slice(-1) : '', cr = std ? pc().slice(0, -1) : '';
     document.querySelectorAll('#suitChips .chip').forEach(function(c){ c.setAttribute('aria-pressed', String(c.dataset.s === cs)); });
     document.querySelectorAll('#rankChips .chip').forEach(function(c){ c.setAttribute('aria-pressed', String(c.dataset.r === cr)); });
@@ -1315,13 +1326,19 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     $('#cardMotion').checked = !!S.cardMotion; $('#motionBox').hidden = !S.cardMotion; $('#cardMotionK').value = S.cardMotionK; $('#cardMotionKVal').textContent = S.cardMotionK; $('#cardMotionInv').checked = !!S.cardMotionInv;
     $('#delay2').value = S.delay2; $('#delay2Val').textContent = S.delay2 > 0 ? S.delay2 + ' s' : 'Aucun';
   }
-  function setCard(id){ if (S.cardMorph && pickSlot === 2) S.card2 = id; else S.card = id; save(); refreshUI(); }
+  function setCard(id){ setSeq(S.cardMorph ? pickSlot - 1 : 0, id); save(); refreshUI(); }
   function isStd(){ return !/^(BR|BB|BL|JKC|JKB)$/.test(pc()); }
   $('#suitChips').addEventListener('click', function(e){ var c = e.target.closest('.chip'); if (c) setCard((isStd() ? pc().slice(0, -1) : 'A') + c.dataset.s); });
   $('#rankChips').addEventListener('click', function(e){ var c = e.target.closest('.chip'); if (c) setCard(c.dataset.r + (isStd() ? pc().slice(-1) : 'S')); });
   $('#specChips').addEventListener('click', function(e){ var c = e.target.closest('.chip'); if (c) setCard(c.dataset.c); });
   $('#cardFlick').addEventListener('change', function(e){ S.cardFlick = e.target.checked; save(); });
-  $('#slotChips').addEventListener('click', function(e){ var c = e.target.closest('.chip'); if (c){ pickSlot = +c.dataset.slot; refreshUI(); } });
+  $('#slotChips').addEventListener('click', function(e){
+    var c = e.target.closest('.chip'); if (!c) return;
+    if (c.dataset.add){ var q = seqOf(); S.cardMore = (S.cardMore || []).concat([q[q.length - 1]]); pickSlot = q.length + 1; save(); }
+    else if (c.dataset.rmlast){ S.cardMore = (S.cardMore || []).slice(0, -1); if (pickSlot > seqOf().length) pickSlot = seqOf().length; save(); }
+    else pickSlot = +c.dataset.slot;
+    refreshUI();
+  });
   $('#morphK').addEventListener('input', function(e){ S.morphK = parseFloat(e.target.value); save(); refreshUI(); });
   $('#cardMorph').addEventListener('change', function(e){
     S.cardMorph = e.target.checked; if (!S.cardMorph) pickSlot = 1; save(); refreshUI(); updatePreview();
@@ -1370,7 +1387,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     if (t.effect === 'sms') a.push('« ' + (t.smsText || '…') + ' »');
     if (t.effect === 'clock') a.push(t.clockT);
     if (t.effect === 'time') a.push(t.mode === 'step' ? 'cran par cran' : t.duration + ' s');
-    if (t.effect === 'card' && t.cardMorph) a.push('secousse → ' + cardShort(t.card2));
+    if (t.effect === 'card' && t.cardMorph){ var nm = 1 + (t.cardMore || []).length; a.push(nm > 1 ? nm + ' secousses' : 'secousse → ' + cardShort(t.card2)); }
     if (t.delay > 0) a.push('délai ' + t.delay + ' s');
     return a.join(' · ');
   }
@@ -1797,7 +1814,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   /* ---------- scène ---------- */
   var running = false, busy = false, timer = null, offset = 0, wl = null;
 
-  var rafId = 0, rollFrom = null, rollRaf = 0, clk = null, clockOn = false, morphId = '', rollQ = 1, cardOn = false, cardA = 0, cardRaf = 0, cardCur = 'AS', morphQ = 0, morphRaf = 0, morphAt = 0, flickX = 0, flickY = 0, flickRaf = 0, stK = 1;
+  var rafId = 0, rollFrom = null, rollRaf = 0, clk = null, clockOn = false, morphId = '', rollQ = 1, cardOn = false, cardA = 0, cardRaf = 0, cardCur = 'AS', morphQ = 0, morphRaf = 0, morphAt = 0, morphIdx = 0, flickX = 0, flickY = 0, flickRaf = 0, stK = 1;
   function animCard(to, done){
     cancelAnimationFrame(cardRaf);
     var from = cardA, dur = S.cardFade === 'fade' ? 450 : 0, t0 = 0;
@@ -1811,7 +1828,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     }
     cardRaf = requestAnimationFrame(tick);
   }
-  function resetCard(){ cancelAnimationFrame(flickRaf); flickX = 0; flickY = 0; cancelAnimationFrame(cardRaf); cancelAnimationFrame(morphRaf); cardCur = S.card; morphQ = 0; cardOn = false; cardA = 0; mo.x = mo.y = mo.vx = mo.vy = mo.r = mo.vr = 0; }
+  function resetCard(){ cancelAnimationFrame(flickRaf); flickX = 0; flickY = 0; cancelAnimationFrame(cardRaf); cancelAnimationFrame(morphRaf); cardCur = S.card; morphIdx = 0; morphQ = 0; cardOn = false; cardA = 0; mo.x = mo.y = mo.vx = mo.vy = mo.r = mo.vr = 0; }
   /* mouvement : la carte réagit aux secousses et à l'inclinaison du téléphone */
   var mo = {x: 0, y: 0, vx: 0, vy: 0, r: 0, vr: 0, tx: 0, ty: 0, on: false, raf: 0, last: 0, ref: null, perm: false, gx: 0, gy: 0, gz: 0};
   function motionWanted(){
@@ -1879,8 +1896,11 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     }
   }
   function doMorph(to){
-    var id2 = typeof to === 'string' ? to : S.card2, force = typeof to === 'string';
-    if ((!S.cardMorph && !force) || !cardOn || cardA < .9 || cardCur === id2 || morphQ > 0) return;
+    var force = typeof to === 'string', q = seqOf();
+    if (!force) while (q[morphIdx + 1] && q[morphIdx + 1] === cardCur) morphIdx++;
+    var id2 = force ? to : q[morphIdx + 1];
+    if ((!S.cardMorph && !force) || !cardOn || cardA < .9 || !id2 || cardCur === id2 || morphQ > 0) return;
+    if (!force) morphIdx++;
     morphId = id2;
     var t0 = 0, dur = S.cardFade === 'fade' ? 220 : 0;
     try { navigator.vibrate && navigator.vibrate(30); } catch(e){}
@@ -2009,9 +2029,9 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     S.card = id; save();
     clearTimeout(timer); timer = null;
     if (!cardOn || cardA < .05){
-      cancelAnimationFrame(morphRaf); cardCur = id; morphQ = 0; cardOn = true; busy = true;
+      cancelAnimationFrame(morphRaf); cardCur = id; morphIdx = 0; morphQ = 0; cardOn = true; busy = true;
       animCard(1, function(){ busy = false; });
-    } else if (cardCur !== id){ doMorph(id); }
+    } else if (cardCur !== id){ morphIdx = 0; doMorph(id); }
   }
   var notif = $('#notif'), smsOn = false, actx = null;
   function ding(){
@@ -2098,7 +2118,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     if (S.effect === 'card'){
       if (busy) return;
       var on = !cardOn, d = (on ? S.delay : S.delay2) * 1000;
-      function go(){ timer = null; if (!running){ busy = false; return; } cardOn = on; if (on){ cancelAnimationFrame(morphRaf); cardCur = S.card; morphQ = 0; } animCard(on ? 1 : 0, function(){ busy = false; }); }
+      function go(){ timer = null; if (!running){ busy = false; return; } cardOn = on; if (on){ cancelAnimationFrame(morphRaf); cardCur = S.card; morphIdx = 0; morphQ = 0; } animCard(on ? 1 : 0, function(){ busy = false; }); }
       busy = true;
       if (d > 0) timer = setTimeout(go, d); else go();
       return;
@@ -2278,7 +2298,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   }, 250);
 
   /* version et mode hors ligne */
-  var VERSION = '46', offlineReady = false;
+  var VERSION = '47', offlineReady = false;
   function buildNote(){ $('#buildNote').textContent = 'Version ' + VERSION + (offlineReady ? ' · prête hors ligne' : ''); }
   buildNote();
   try {
@@ -2314,7 +2334,8 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     minutes: rcInt(1, 720), mode: function(v){ return v === 'auto' || v === 'step' ? v : undefined; }, duration: rcInt(2, 20),
     delay: rcSec, delay2: rcSec,
     smsFrom: rcStr(40), smsText: rcStr(120), smsSound: rcBool,
-    card: rcCard, card2: rcCard, cardMorph: rcBool
+    card: rcCard, card2: rcCard, cardMorph: rcBool,
+    cardMore: function(v){ return Array.isArray(v) ? v.filter(function(x){ return rcCard(x); }).slice(0, 7) : undefined; }
   };
   function rcPhase(){
     if (S.effect === 'time'){ if (offset <= 0) return 'done'; if (busy) return 'busy'; return offset === S.minutes ? 'armed' : 'partial'; }
@@ -2323,7 +2344,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     return busy ? 'busy' : cardOn ? 'on' : 'armed';
   }
   function rcState(re){
-    var st = {k: 'state', v: VERSION, run: running, fx: S.effect, ph: rcPhase(), left: Math.max(0, offset), cfg: {}};
+    var st = {k: 'state', v: VERSION, run: running, fx: S.effect, ph: rcPhase(), left: Math.max(0, offset), mi: morphIdx, mn: S.cardMorph ? seqOf().length - 1 : 0, cfg: {}};
     if (progRun){
       var nx = pNext();
       st.tour = {i: progRun.i, n: progRun.steps.length, pn: progRun.name, names: progRun.steps.map(stepLabel), nt: nx ? nx.trig : '', gap: nx ? nx.gap : 0, pl: !!progRun.played};
@@ -2332,7 +2353,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     if (re) st.re = re;
     return st;
   }
-  function rcSigOf(st){ return [st.run, st.fx, st.ph, st.fx === 'time' && S.mode === 'step' ? st.left : 0, st.tour ? st.tour.i + '/' + st.tour.n : ''].join('|'); }
+  function rcSigOf(st){ return [st.run, st.fx, st.ph, st.mi, st.mn, st.fx === 'time' && S.mode === 'step' ? st.left : 0, st.tour ? st.tour.i + '/' + st.tour.n : ''].join('|'); }
   function rcReply(re){ if (!rcConn) return; var st = rcState(re); rcSig = rcSigOf(st); rcLast = Date.now(); rcConn.send(st); }
   function rcApply(set){
     if (!set || typeof set !== 'object') return;
@@ -2341,7 +2362,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     Object.keys(RC_SET).forEach(function(k){
       if (!Object.prototype.hasOwnProperty.call(set, k)) return;
       var v = RC_SET[k](set[k]);
-      if (v !== undefined && S[k] !== v){ S[k] = v; ch = true; }
+      if (v !== undefined && (Array.isArray(v) ? JSON.stringify(S[k]) !== JSON.stringify(v) : S[k] !== v)){ S[k] = v; ch = true; }
     });
     if (!ch) return;
     save();

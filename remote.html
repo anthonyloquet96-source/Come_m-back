@@ -163,8 +163,6 @@ label.l{font-size:14px;color:var(--mute)}
     <div class="grp" id="gCard" hidden>
       <h2>Carte</h2>
       <div class="seg" id="slotSeg">
-        <button class="chip" type="button" data-slot="1">Carte de départ</button>
-        <button class="chip" type="button" data-slot="2" id="slot2">Après secousse</button>
       </div>
       <p class="help" id="cardLabel" style="color:var(--chalk);font-size:16px"></p>
       <div class="chips" id="suitChips">
@@ -204,7 +202,7 @@ label.l{font-size:14px;color:var(--mute)}
   try { direct = localStorage.getItem('marche-arriere-remote-direct') === '1'; } catch(e){}
   var secret = null, conn = null, st = null, lastSeen = 0, net = 'connecting', slot = 1, patch = {}, patchT = 0;
   var pend = {}, toastT = 0, wl = null;
-  var DEF = {effect: 'time', minutes: 10, mode: 'auto', duration: 5, delay: 0, delay2: 0, smsFrom: 'Messages', smsText: '', smsSound: true, card: 'AS', card2: '7H', cardMorph: false, clockT: '12:00', clockD: ''};
+  var DEF = {effect: 'time', minutes: 10, mode: 'auto', duration: 5, delay: 0, delay2: 0, smsFrom: 'Messages', smsText: '', smsSound: true, card: 'AS', card2: '7H', cardMore: [], cardMorph: false, clockT: '12:00', clockD: ''};
   var cfg = Object.assign({}, DEF);
 
   function clamp(v, a, b){ return Math.min(b, Math.max(a, v)); }
@@ -336,7 +334,8 @@ label.l{font-size:14px;color:var(--mute)}
   function setChk(el, v){ if (el.checked !== !!v) el.checked = !!v; }
   function pressed(sel, test){ all(sel).forEach(function(b){ b.setAttribute('aria-pressed', String(!!test(b))); }); }
   function secTxt(v){ return v > 0 ? v + ' s' : 'Aucun'; }
-  function pc(){ return slot === 2 && cfg.cardMorph ? cfg.card2 : cfg.card; }
+  function seqR(){ return [cfg.card, cfg.card2].concat(cfg.cardMore || []); }
+  function pc(){ return cfg.cardMorph ? (seqR()[slot - 1] || cfg.card) : cfg.card; }
   function render(){
     if (!secret) return;
     var fx = (st && st.fx) || cfg.effect;
@@ -364,16 +363,22 @@ label.l{font-size:14px;color:var(--mute)}
     /* sms */
     setVal($('#smsFrom'), cfg.smsFrom); setVal($('#smsText'), cfg.smsText); setChk($('#smsSound'), cfg.smsSound);
     /* carte */
-    if (!cfg.cardMorph) slot = 1;
-    $('#slot2').hidden = !cfg.cardMorph; $('#slotSeg').style.display = cfg.cardMorph ? '' : 'none';
-    pressed('#slotSeg .chip', function(b){ return +b.dataset.slot === slot; });
+    var qn = seqR().length;
+    if (!cfg.cardMorph || slot > qn) slot = 1;
+    var sh = '<button class="chip" type="button" data-slot="1">Départ</button>';
+    for (var si = 2; si <= qn; si++) sh += '<button class="chip" type="button" data-slot="' + si + '">' + (qn > 2 ? 'Secousse ' + (si - 1) : 'Après secousse') + '</button>';
+    if (qn < 9) sh += '<button class="chip" type="button" data-add="1">+ Secousse</button>';
+    if (qn > 2) sh += '<button class="chip" type="button" data-rmlast="1">− Dernière</button>';
+    if ($('#slotSeg').dataset.h !== sh){ $('#slotSeg').innerHTML = sh; $('#slotSeg').dataset.h = sh; }
+    $('#slotSeg').style.display = cfg.cardMorph ? '' : 'none';
+    pressed('#slotSeg .chip[data-slot]', function(b){ return +b.dataset.slot === slot; });
     var cur = pc(), std = !/^(BR|BB|BL|JKC|JKB)$/.test(cur);
     pressed('#suitChips .chip', function(b){ return direct ? (dp.s ? b.dataset.s === dp.s : !dp.r && std && b.dataset.s === cur.slice(-1)) : std && b.dataset.s === cur.slice(-1); });
     pressed('#rankChips .chip', function(b){ return direct ? (dp.r ? b.dataset.r === dp.r : !dp.s && std && b.dataset.r === cur.slice(0, -1)) : std && b.dataset.r === cur.slice(0, -1); });
     setChk($('#direct'), direct); $('#directHelp').hidden = !direct; if (direct) $('#slotSeg').style.display = 'none';
     setVal($('#clockT'), cfg.clockT); setChk($('#clockUseD'), !!cfg.clockD); $('#clockD').hidden = !cfg.clockD; setVal($('#clockD'), cfg.clockD || '');
     pressed('#specChips .chip', function(b){ return b.dataset.c === cur; });
-    $('#cardLabel').textContent = direct && (dp.r || dp.s) ? (dp.r ? 'Valeur ' + dp.r + ' · choisis la couleur' : 'Couleur choisie · choisis la valeur') : (cfg.cardMorph ? (slot === 2 ? 'Après secousse : ' : 'Au départ : ') : '') + cardName(cur);
+    $('#cardLabel').textContent = direct && (dp.r || dp.s) ? (dp.r ? 'Valeur ' + dp.r + ' · choisis la couleur' : 'Couleur choisie · choisis la valeur') : (cfg.cardMorph ? (slot === 1 ? 'Au départ : ' : (qn > 2 ? 'Secousse ' + (slot - 1) + ' : ' : 'Après secousse : ')) : '') + cardName(cur);
     setChk($('#cardMorph'), cfg.cardMorph);
     /* délais */
     setVal($('#delay'), cfg.delay); $('#delayOut').textContent = secTxt(cfg.delay);
@@ -384,7 +389,9 @@ label.l{font-size:14px;color:var(--mute)}
     if (!$('#touch').dataset.st) $('#touch').textContent = lab; $('#touch').disabled = !!down;
     $('#rearm').disabled = !!down; $('#rearm').classList.toggle('hot', !!p && p !== 'armed' && p !== 'busy');
     $('#next').hidden = !(multi && tr.i < tr.n - 1); $('#next').disabled = !!down; if (multi && tr.i < tr.n - 1) $('#next').textContent = 'Étape suivante : ' + tr.names[tr.i + 1];
-    $('#morph').hidden = !(fx === 'card' && cfg.cardMorph); $('#morph').disabled = !!down || p !== 'on';
+    var mn = (st && st.mn) || 0, mi = (st && st.mi) || 0;
+    $('#morph').hidden = !(fx === 'card' && cfg.cardMorph); $('#morph').disabled = !!down || p !== 'on' || (mn > 0 && mi >= mn);
+    if (!$('#morph').dataset.st) $('#morph').textContent = mn > 1 ? 'Secousse ' + Math.min(mi + 1, mn) + ' sur ' + mn : 'Secousse';
     $('#hint').textContent = fx === 'card' && cfg.cardMorph ? 'Secousse : change la carte à distance, sans bouger le téléphone.' : '';
   }
 
@@ -443,8 +450,17 @@ label.l{font-size:14px;color:var(--mute)}
   $('#smsText').addEventListener('input', function(e){ set('smsText', e.target.value); });
   $('#smsSound').addEventListener('change', function(e){ set('smsSound', e.target.checked, true); });
   $('#cardMorph').addEventListener('change', function(e){ set('cardMorph', e.target.checked, true); });
-  $('#slotSeg').addEventListener('click', function(e){ var b = e.target.closest('.chip'); if (b){ slot = +b.dataset.slot; render(); } });
-  function pickCard(id){ set(slot === 2 && cfg.cardMorph ? 'card2' : 'card', id, true); }
+  $('#slotSeg').addEventListener('click', function(e){
+    var b = e.target.closest('.chip'); if (!b) return;
+    if (b.dataset.add){ var q = seqR(); slot = q.length + 1; set('cardMore', (cfg.cardMore || []).concat([q[q.length - 1]]), true); }
+    else if (b.dataset.rmlast){ set('cardMore', (cfg.cardMore || []).slice(0, -1), true); }
+    else { slot = +b.dataset.slot; render(); }
+  });
+  function pickCard(id){
+    var i = cfg.cardMorph ? slot - 1 : 0;
+    if (i === 0) set('card', id, true); else if (i === 1) set('card2', id, true);
+    else { var m = (cfg.cardMore || []).slice(); m[i - 2] = id; set('cardMore', m, true); }
+  }
   function isStd(c){ return !/^(BR|BB|BL|JKC|JKB)$/.test(c); }
   /* annonce directe : valeur + couleur (ou carte spéciale) et la carte apparaît tout de suite sur le téléphone de la salle */
   function fire(id){
