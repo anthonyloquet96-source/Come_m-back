@@ -1,4 +1,4 @@
-# Télécommande — architecture (v46)
+# Télécommande — architecture (v47)
 
 ## Principe
 Deux téléphones, un relais gratuit entre eux. Le téléphone de la salle (« hôte ») exécute les ordres ;
@@ -27,7 +27,7 @@ Chaque message porte `t` (date) et `n` (nonce) : refusé s'il a plus de 60 s ou 
 | Sens | `k` | Rôle |
 |---|---|---|
 | remote → hôte | `hello` | demande l'état (test de liaison) |
-| | `cfg` + `set{}` | règle : `effect (time/sms/card/clock) minutes mode duration delay delay2 smsFrom smsText smsSound card card2 cardMorph clockT clockD` (liste blanche, valeurs bornées) |
+| | `cfg` + `set{}` | règle : `effect (time/sms/card/clock) minutes mode duration delay delay2 smsFrom smsText smsSound card card2 cardMorph clockT clockD cardMore` (liste blanche, valeurs bornées) |
 | | `touch` | exactement le toucher d'un doigt (`rewind()`) |
 | | `rearm` | réarmer (= appui long coin droit) |
 | | `morph` | la « secousse » à distance (`doMorph()`) |
@@ -61,3 +61,7 @@ Pas de battement de cœur : un test de liaison toutes les 2 min seulement quand 
 - Entre deux étapes, le **déclenchement** de la suivante : `Au toucher`, `Après un temps` (0–60 s après que la précédente est jouée) ou `En secouant` (capteur autorisé au lancement ; sans capteur, le toucher ou le bouton « Étape suivante » de la télécommande prennent le relais). Le « délai après activation » est le délai habituel de chaque étape.
 - Jeu : le bouton du bas devient « Lancer « nom » » quand la rubrique Programmes est ouverte. Au toucher/secousse, l'effet affiché est retiré proprement, puis l'étape suivante est jouée. Le dernier lancé est repris à l'ouverture directe.
 - Télécommande : barre « Programme · Étape i sur n », étapes cliquables (`goto`), bouton « Étape suivante » (`next`).
+
+## Secousses en chaîne (v47)
+- Effet « carte » avec secousse : la suite des cartes est `card` (départ), `card2` (secousse 1), puis `cardMore[]` (secousses suivantes, 9 cartes au total). Chaque secousse (réelle, ou `morph` depuis la télécommande) passe à la carte suivante ; la suite repart du début à chaque nouvelle apparition. Une carte identique à la précédente est sautée.
+- État hôte → télécommande : `mi` (secousse en cours) et `mn` (nombre de secousses) ; le bouton « Secousse 2 sur 3 » s'éteint à la fin de la suite.
