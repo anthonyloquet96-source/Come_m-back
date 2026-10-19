@@ -71,3 +71,6 @@ Pas de battement de cœur : un test de liaison toutes les 2 min seulement quand 
 - Les réglages stockés (tour simple et étapes de programme) sont validés à la lecture : une valeur abîmée ou hors bornes revient à une valeur valide au lieu de casser l'effet.
 - Programmes : toucher/secousse juste après la fin d'un effet est pris en compte immédiatement (plus de course avec la surveillance de 150 ms).
 - Résumés de rubriques raccourcis pour ne plus déborder.
+
+## v49
+- Télécommande plus aérée : groupes et espacements agrandis, boutons de sélection plus grands (valeurs en grille régulière, couleurs en 4 colonnes, cartes spéciales en 3), cases à cocher en lignes tactiles.
