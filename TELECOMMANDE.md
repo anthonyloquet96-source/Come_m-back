@@ -74,3 +74,6 @@ Pas de battement de cœur : un test de liaison toutes les 2 min seulement quand 
 
 ## v49
 - Télécommande plus aérée : groupes et espacements agrandis, boutons de sélection plus grands (valeurs en grille régulière, couleurs en 4 colonnes, cartes spéciales en 3), cases à cocher en lignes tactiles.
+
+## v50
+- « L'heure devient… » : défilement type compteur mécanique, chaque chiffre est une roue qui tourne dans le sens du temps et s'arrête en douceur (de droite à gauche), sans chiffres superposés.
