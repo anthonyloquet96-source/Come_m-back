@@ -80,3 +80,6 @@ Pas de battement de cœur : un test de liaison toutes les 2 min seulement quand 
 
 ## v51
 - Défilement de l'heure : chaque chiffre est une roue vue à travers une fenêtre à bords nets (rien ne déborde sur la date ni sur les chiffres voisins), colonne réservée par roue pour éviter tout chevauchement, arrêt net sur le chiffre visé.
+
+## v52
+- Mode application (iPhone) : plus de bande noire en glissant ou en appuyant plusieurs fois vers le bas. Le défilement et le rebond de la page sont bloqués tant que le tour tourne.

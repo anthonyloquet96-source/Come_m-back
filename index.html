@@ -2354,6 +2354,12 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   })();
   hold($('#zl'), leave, rewind); hold($('#zr'), rearm, rewind);
   stage.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  /* en mode application (iPhone), un glissement ou plusieurs appuis vers le bas fait rebondir ou défiler la page : on voit alors le fond noir derrière la scène. On bloque tout défilement tant que le tour tourne. */
+  function isApp(){ return window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches); }
+  ['touchmove', 'gesturestart'].forEach(function(t){
+    document.addEventListener(t, function(e){ if (running && isApp() && e.cancelable) e.preventDefault(); }, {passive: false});
+  });
+  window.addEventListener('scroll', function(){ if (running && isApp() && (window.scrollY || window.scrollX)) window.scrollTo(0, 0); }, {passive: true});
   document.addEventListener('keydown', function(e){
     if (e.key !== 'Escape') return;
     if (running) leave(); else if (ed.open) closeEditor();
@@ -2368,7 +2374,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   }, 250);
 
   /* version et mode hors ligne */
-  var VERSION = '51', offlineReady = false;
+  var VERSION = '52', offlineReady = false;
   function buildNote(){ $('#buildNote').textContent = 'Version ' + VERSION + (offlineReady ? ' · prête hors ligne' : ''); }
   buildNote();
   try {
