@@ -127,12 +127,13 @@ h2{font:700 19px/1.2 var(--f-display);margin:0 0 6px;display:flex;align-items:ce
 .tree>li.first::before{top:24px}.tree>li.last::before{bottom:calc(100% - 24px)}
 .tree>li.first.last::before{display:none}
 .tree .dot{position:absolute;left:4px;top:8px;width:28px;height:28px;border-radius:50%;border:2px solid var(--brass);background:var(--felt);color:var(--brass);font:600 13px/24px var(--f-mono);text-align:center;z-index:1}
-.tree .nd{display:flex;gap:8px;align-items:stretch;padding:4px 0}
-.tree .card{flex:1;min-width:0;text-align:left;appearance:none;background:var(--felt);border:1px solid var(--line);border-radius:10px;color:var(--chalk);padding:10px 12px;cursor:pointer;display:flex;flex-direction:column;gap:2px;font:inherit;min-height:48px}
-.tree .card strong{font:600 15px var(--f-body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tree .nd{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:4px 0}
+.tree .card{flex:1 1 150px;min-width:0;text-align:left;appearance:none;background:var(--felt);border:1px solid var(--line);border-radius:10px;color:var(--chalk);padding:10px 12px;cursor:pointer;display:flex;flex-direction:column;gap:2px;font:inherit;min-height:48px}
+.tree .card strong{font:600 15px var(--f-body);overflow-wrap:anywhere}
 .tree .card small{color:var(--mute);font-size:12px;line-height:1.35}
 .tree .card:active{border-color:var(--brass)}
-.tree .nact{display:flex;flex-direction:row;gap:4px;align-items:center}
+.tree .nact{display:flex;flex-direction:row;gap:4px;align-items:center;margin-left:auto}
+.tree .tpanel .seg{grid-template-columns:1fr}
 .tree .nact button{appearance:none;background:var(--felt-2);border:1px solid var(--line);color:var(--mute);border-radius:8px;width:32px;height:36px;font-size:13px;cursor:pointer;padding:0}
 .tree .nact button[disabled]{opacity:.3}
 .tree li.lk{padding-top:2px;padding-bottom:2px}
@@ -647,7 +648,27 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   var S = Object.assign({}, DEF, {zones: DEF_ZONES.map(function(z){ return Object.assign({}, z); })});
   try { Object.assign(S, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch(e){}
   if (!Array.isArray(S.zones)) S.zones = DEF_ZONES.map(function(z){ return Object.assign({}, z); });
-  S.minutes = Math.min(720, Math.max(1, parseInt(S.minutes, 10) || DEF.minutes));
+  /* réglages d'un tour : toute valeur étrangère ou hors bornes (stockage ancien, abîmé ou modifié) est ramenée à une valeur valide */
+  function cleanTour(o){
+    var num = function(v, a, b, d){ v = parseFloat(v); return isNaN(v) ? d : Math.min(b, Math.max(a, v)); };
+    var CK = /^(?:(?:A|[2-9]|10|J|Q|K)[SHDC]|BR|BB|BL|JKC|JKB)$/, str = function(v, n, d){ return typeof v === 'string' ? v.slice(0, n) : d; };
+    if (['time', 'sms', 'card', 'clock'].indexOf(o.effect) < 0) o.effect = DEF.effect;
+    o.minutes = Math.round(num(o.minutes, 1, 720, DEF.minutes));
+    if (o.mode !== 'auto' && o.mode !== 'step') o.mode = DEF.mode;
+    o.duration = num(o.duration, 2, 20, DEF.duration); o.delay = num(o.delay, 0, 15, 0); o.delay2 = num(o.delay2, 0, 15, 0);
+    if (!CK.test(o.card)) o.card = DEF.card; if (!CK.test(o.card2)) o.card2 = DEF.card2;
+    o.cardMore = Array.isArray(o.cardMore) ? o.cardMore.filter(function(x){ return CK.test(x); }).slice(0, 7) : [];
+    o.smsFrom = str(o.smsFrom, 40, DEF.smsFrom); o.smsText = str(o.smsText, 120, DEF.smsText);
+    if (typeof o.clockT !== 'string' || !/^([01]\d|2[0-3]):[0-5]\d$/.test(o.clockT)) o.clockT = DEF.clockT;
+    if (typeof o.clockD !== 'string' || (o.clockD !== '' && !/^\d{4}-\d{2}-\d{2}$/.test(o.clockD))) o.clockD = '';
+    o.smsX = num(o.smsX, 0, 100, DEF.smsX); o.smsY = num(o.smsY, 0, 100, DEF.smsY); o.smsS = num(o.smsS, .6, 1.6, DEF.smsS);
+    o.cardX = num(o.cardX, -50, 150, DEF.cardX); o.cardY = num(o.cardY, -50, 150, DEF.cardY); o.cardS = num(o.cardS, 30, 300, DEF.cardS);
+    o.cardMotionK = num(o.cardMotionK, .3, 3, DEF.cardMotionK); o.morphK = num(o.morphK, .3, 3, DEF.morphK);
+    ['cardIdx', 'cardClock', 'cardMotion', 'cardMotionInv', 'cardMorph', 'cardFlick', 'smsSound'].forEach(function(k){ o[k] = typeof o[k] === 'boolean' ? o[k] : DEF[k]; });
+    if (o.cardFade !== 'fade' && o.cardFade !== 'cut') o.cardFade = DEF.cardFade;
+    return o;
+  }
+  cleanTour(S);
 
   var img = null, imgVer = 0, rawImg = null, rawVer = 0;
   var useRaw = function(){ return S.bgMode === 'raw' && !!rawImg; };
@@ -662,7 +683,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   try { var pj = JSON.parse(localStorage.getItem(PKEY) || '{}'); if (pj && Array.isArray(pj.list)) P = {list: pj.list, sel: pj.sel || ''}; } catch(e){}
   var STEP_KEYS = ['effect','minutes','mode','duration','delay','delay2','smsFrom','smsText','smsX','smsY','smsS','smsSound','card','card2','cardMore','cardX','cardY','cardS','cardIdx','cardClock','cardMotion','cardMotionK','cardMotionInv','cardMorph','cardFade','cardFlick','morphK','clockT','clockD'];
   function snap(){ var o = {}; STEP_KEYS.forEach(function(k){ o[k] = S[k]; }); return o; }
-  function stepFull(t){ var o = {}; STEP_KEYS.forEach(function(k){ o[k] = DEF[k]; }); o = Object.assign(o, t || {}); o.cardMore = Array.isArray(o.cardMore) ? o.cardMore.slice(0, 8) : []; o.minutes = Math.min(720, Math.max(1, parseInt(o.minutes, 10) || DEF.minutes)); return o; }
+  function stepFull(t){ var o = {}; STEP_KEYS.forEach(function(k){ o[k] = DEF[k]; }); o = Object.assign(o, t && typeof t === 'object' ? t : {}); return cleanTour(o); }
   var uid = function(){ return 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); };
   P.list = P.list.filter(function(p){ return p && typeof p.id === 'string' && Array.isArray(p.steps); }).slice(0, 30).map(function(p){
     return {id: p.id, name: String(p.name || '').slice(0, 30), steps: p.steps.slice(0, 40).map(function(t){
@@ -1432,9 +1453,9 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     $('#go').textContent = gp ? 'Lancer « ' + (pp.name || 'Sans nom') + ' »' : 'Lancer le tour';
     var li = $('#launchInfo'); li.hidden = !gp; li.textContent = gp ? 'Programme de ' + pp.steps.length + ' étape' + (pp.steps.length > 1 ? 's' : '') + ' · au premier toucher, l\'étape 1 se joue.' : '';
     /* résumés des rubriques fermées */
-    $('#sumProg').textContent = P.list.length ? P.list.length + ' programme' + (P.list.length > 1 ? 's' : '') : 'Aucun';
-    $('#sumBg').textContent = img ? 'Image chargée' : 'À importer'; $('#sumBg').dataset.ok = img ? '1' : '';
-    $('#sumFx').textContent = FXN[S.effect] + (S.effect === 'time' ? ' · ' + S.minutes + ' min' : '');
+    $('#sumProg').textContent = P.list.length ? P.list.length + (P.list.length > 1 ? ' progr.' : ' progr.') : 'Aucun';
+    $('#sumBg').textContent = img ? 'Prête' : 'À importer'; $('#sumBg').dataset.ok = img ? '1' : '';
+    $('#sumFx').textContent = {time: 'Temps −' + S.minutes + ' min', sms: 'SMS', card: 'Carte', clock: 'Heure'}[S.effect];
     $('#sumDisp').textContent = (S.layout === '2' ? 'Page entière' : 'Standard') + (S.lockPortrait ? ' · portrait' : '');
     rcSum();
   }
@@ -2098,7 +2119,9 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   }, 150);
   /* secouer : déclenche l'étape suivante quand elle est réglée ainsi */
   function onShakeDM(e){
-    if (!progRun || !progRun.played || chaining) return;
+    if (!progRun || chaining) return;
+    if (!progRun.played && stepDone()) progRun.played = true;
+    if (!progRun.played) return;
     var nx = pNext(); if (!nx || nx.trig !== 'shake') return;
     var a = e.acceleration, g = e.accelerationIncludingGravity, ax = 0, ay = 0, az = 0;
     if (a && a.x != null){ ax = a.x; ay = a.y; az = a.z || 0; }
@@ -2108,6 +2131,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   }
   /* le toucher : si l'étape suivante se déclenche au toucher (ou en secouant sans capteur), il la joue ; sinon effet normal */
   function rewind(){
+    if (progRun && !progRun.played && !chaining && stepDone()) progRun.played = true;
     if (progRun && progRun.played && pHasNext()){
       var t = pNext().trig;
       if (t === 'touch' || (t === 'shake' && !mo.on)){ chainGo(); return; }
@@ -2298,7 +2322,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   }, 250);
 
   /* version et mode hors ligne */
-  var VERSION = '47', offlineReady = false;
+  var VERSION = '48', offlineReady = false;
   function buildNote(){ $('#buildNote').textContent = 'Version ' + VERSION + (offlineReady ? ' · prête hors ligne' : ''); }
   buildNote();
   try {

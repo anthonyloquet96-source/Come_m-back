@@ -65,3 +65,9 @@ Pas de battement de cœur : un test de liaison toutes les 2 min seulement quand 
 ## Secousses en chaîne (v47)
 - Effet « carte » avec secousse : la suite des cartes est `card` (départ), `card2` (secousse 1), puis `cardMore[]` (secousses suivantes, 9 cartes au total). Chaque secousse (réelle, ou `morph` depuis la télécommande) passe à la carte suivante ; la suite repart du début à chaque nouvelle apparition. Une carte identique à la précédente est sautée.
 - État hôte → télécommande : `mi` (secousse en cours) et `mn` (nombre de secousses) ; le bouton « Secousse 2 sur 3 » s'éteint à la fin de la suite.
+
+## v48 — audit complet
+- Télécommande : le lien `#code` re-jumelle même quand la page est déjà ouverte ; champ de code, en-tête de tour et arbre des programmes adaptés aux écrans 320 px.
+- Les réglages stockés (tour simple et étapes de programme) sont validés à la lecture : une valeur abîmée ou hors bornes revient à une valeur valide au lieu de casser l'effet.
+- Programmes : toucher/secousse juste après la fin d'un effet est pris en compte immédiatement (plus de course avec la surveillance de 150 ms).
+- Résumés de rubriques raccourcis pour ne plus déborder.
