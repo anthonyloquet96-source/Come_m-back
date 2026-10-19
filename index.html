@@ -1192,21 +1192,65 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
           }
           ctx.globalAlpha = 1;
         }
-        var h = date.getHours(), hh = S.h12 ? (h % 12 || 12) : h;
-        var tt = (S.zero && hh < 10 ? '0' : '') + hh + ':' + pad(date.getMinutes());
+        function fmtT(d){ var h = d.getHours(), hh = S.h12 ? (h % 12 || 12) : h; return (S.zero && hh < 10 ? '0' : '') + hh + ':' + pad(d.getMinutes()); }
+        var tt = fmtT(date);
+        /* défilement type compteur : chaque chiffre est une roue qui tourne dans le sens du temps, s'arrête en douceur sur le chiffre visé (de droite à gauche) */
+        function paintRoll(R, fs, fill){
+          ctx.font = S.weight + ' ' + fs + 'px ' + fam;
+          var to = fmtT(R.to), fr = fmtT(R.from), n = to.length, sp = S.spacing / 100 * fs, ws = [], tot = 0, i;
+          while (fr.length < n) fr = ' ' + fr; if (fr.length > n) fr = fr.slice(fr.length - n);
+          for (i = 0; i < n; i++){ var w = ctx.measureText(to[i]).width; ws.push(w); tot += w; }
+          tot += sp * (n - 1);
+          var colon = to.indexOf(':'), x = -tot / 2, pitch = fs * .8, dist = R.dist, dir = R.dir;
+          function ch(c, cx, y){
+            var ay = Math.abs(y) / fs, a = ay <= .12 ? 1 : ay >= .58 ? 0 : 1 - (function(v){ return v * v * (3 - 2 * v); })((ay - .12) / .46);
+            if (a <= 0) return;
+            ctx.textAlign = 'center';
+            if (S.cstyle === 'glass'){
+              ctx.globalAlpha = op * .6 * a; ctx.fillStyle = S.color; ctx.fillText(c, cx, y);
+              ctx.globalAlpha = op * .55 * a; ctx.strokeStyle = '#fff'; ctx.lineWidth = Math.max(1, fs * .012); ctx.shadowColor = 'transparent'; ctx.strokeText(c, cx, y);
+              if (S.shadow) ctx.shadowColor = 'rgba(0,0,0,.38)';
+            } else { ctx.globalAlpha = op * a; ctx.fillStyle = fill; ctx.fillText(c, cx, y); }
+            ctx.textAlign = 'left';
+          }
+          var ranks = [], r = 0;
+          for (i = n - 1; i >= 0; i--) if (to[i] !== ':') ranks[i] = r++;
+          for (i = 0; i < n; i++){
+            var cx = x + ws[i] / 2, a0 = fr[i], b0 = to[i];
+            if (b0 === ':' || a0 === b0 && dist < 10){ ch(b0, cx, 0); x += ws[i] + sp; continue; }
+            var da = /\d/.test(a0), db = /\d/.test(b0), steps, m, base, pos;
+            if (!da || !db){
+              /* un côté sans chiffre (ex. « 9 » → « 12 » en 12 h) : glissement simple */
+              var pp = clamp((R.t - .0) / .75, 0, 1); pp = 1 - Math.pow(1 - pp, 3);
+              ch(a0, cx, -dir * pp * pitch); ch(b0, cx, dir * (1 - pp) * pitch);
+              x += ws[i] + sp; continue;
+            }
+            var after = i - colon, isMinTens = after === 1, isMinUnit = after === 2;
+            m = isMinTens ? 6 : (colon === 2 && i === 0 ? (S.h12 ? 2 : 3) : 10);
+            var A = +a0, B = +b0;
+            steps = dir > 0 ? ((B - A) % m + m) % m : ((A - B) % m + m) % m;
+            var extra = isMinUnit ? Math.min(2, Math.floor(dist / 25)) : isMinTens ? Math.min(1, Math.floor(dist / 150)) : 0;
+            steps += extra * m;
+            if (steps === 0){ ch(b0, cx, 0); x += ws[i] + sp; continue; }
+            var end = .7 + .3 * (ranks[i] / Math.max(1, r - 1)), pr = clamp(R.t / end, 0, 1);
+            pr = 1 - Math.pow(1 - pr, 4);
+            pos = steps * pr;                       /* nombre de crans parcourus, fractionnaire */
+            var k0 = Math.floor(pos);
+            for (var k = k0 - 1; k <= k0 + 2; k++){
+              var idx = (((A + dir * k) % m) + m) % m;
+              ch(String(idx), cx, (k - pos) * pitch * dir);
+            }
+            x += ws[i] + sp;
+          }
+          ctx.globalAlpha = 1;
+        }
         var fill = S.color;
         if (S.cstyle === 'gradient'){
           fill = ctx.createLinearGradient(0, -size * .4, 0, size * .45);
           fill.addColorStop(0, S.color); fill.addColorStop(1, 'rgba(255,255,255,.35)');
         }
         ctx.translate(cx, cy); ctx.scale(wx, 1);
-        var tp = null;
-        if (o.roll){
-          var ph = o.roll.prev.getHours(); ph = S.h12 ? (ph % 12 || 12) : ph;
-          tp = (S.zero && ph < 10 ? '0' : '') + ph + ':' + pad(o.roll.prev.getMinutes());
-          if (tp.length !== tt.length) tp = null;
-        }
-        paint(tt, size, S.weight, fill, tp, tp ? o.roll.q : 0);
+        if (o.roll) paintRoll(o.roll, size, fill); else paint(tt, size, S.weight, fill);
         if (S.showDate){
           var ds = date.toLocaleDateString('fr-FR', S.dateFmt === 'short' ? {weekday:'short', day:'numeric', month:'short'} : {weekday:'long', day:'numeric', month:'long'});
           var dsz = size * clamp(S.dateSize, 8, 40) / 100;
@@ -1989,8 +2033,9 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     var sd = shown();
     if (clk){
       /* l'heure défile : v = décalage en minutes, fractionnaire ; on fond la minute b vers la minute b+1 selon la partie décimale */
-      var b = Math.floor(clk.v), nw = Date.now();
-      sd = new Date(nw + (b + 1) * 60000); o.roll = {prev: new Date(nw + b * 60000), q: clk.v - b};
+      var nw = Date.now();
+      sd = new Date(nw + clk.to * 60000);
+      o.roll = {from: new Date(nw + clk.from * 60000), to: sd, t: clk.t, dist: Math.abs(clk.to - clk.from), dir: clk.to >= clk.from ? 1 : -1};
     }
     stR.render(sd, o);
   }
@@ -2030,13 +2075,13 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
     clockOn = on;
     if (dist < 1){ clk = null; offset = to; frame(); if (done) done(); return; }
     /* durée : de 1 s (quelques minutes) à 3,8 s (plusieurs jours) ; départ vif, arrivée qui ralentit jusqu'à l'heure visée */
-    var dur = Math.min(3800, 1000 + Math.log10(1 + dist) * 800), t0 = 0;
-    clk = {v: from};
+    var dur = Math.min(4200, 1500 + Math.log10(1 + dist) * 800), t0 = 0;
+    clk = {v: from, from: from, to: to, t: 0};
     function tick(now){
       if (!running){ clk = null; offset = to; if (done) done(); return; }
       if (!t0) t0 = now;
-      var t = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - t, 3);
-      clk.v = from + (to - from) * e; frame();
+      var t = Math.min(1, (now - t0) / dur);
+      clk.t = t; clk.v = from + (to - from) * t; frame();
       if (t < 1) rollRaf = requestAnimationFrame(tick);
       else { clk = null; offset = to; frame(); if (done) done(); }
     }
@@ -2322,7 +2367,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   }, 250);
 
   /* version et mode hors ligne */
-  var VERSION = '49', offlineReady = false;
+  var VERSION = '50', offlineReady = false;
   function buildNote(){ $('#buildNote').textContent = 'Version ' + VERSION + (offlineReady ? ' · prête hors ligne' : ''); }
   buildNote();
   try {
