@@ -77,3 +77,6 @@ Pas de battement de cœur : un test de liaison toutes les 2 min seulement quand 
 
 ## v50
 - « L'heure devient… » : défilement type compteur mécanique, chaque chiffre est une roue qui tourne dans le sens du temps et s'arrête en douceur (de droite à gauche), sans chiffres superposés.
+
+## v51
+- Défilement de l'heure : chaque chiffre est une roue vue à travers une fenêtre à bords nets (rien ne déborde sur la date ni sur les chiffres voisins), colonne réservée par roue pour éviter tout chevauchement, arrêt net sur le chiffre visé.

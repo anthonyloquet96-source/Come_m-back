@@ -1194,55 +1194,56 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
         }
         function fmtT(d){ var h = d.getHours(), hh = S.h12 ? (h % 12 || 12) : h; return (S.zero && hh < 10 ? '0' : '') + hh + ':' + pad(d.getMinutes()); }
         var tt = fmtT(date);
-        /* défilement type compteur : chaque chiffre est une roue qui tourne dans le sens du temps, s'arrête en douceur sur le chiffre visé (de droite à gauche) */
+        /* défilement type compteur : chaque chiffre est une roue vue à travers une fenêtre (masque net) ; elle tourne dans le sens du temps et s'arrête en douceur, de droite à gauche */
         function paintRoll(R, fs, fill){
           ctx.font = S.weight + ' ' + fs + 'px ' + fam;
-          var to = fmtT(R.to), fr = fmtT(R.from), n = to.length, sp = S.spacing / 100 * fs, ws = [], tot = 0, i;
+          var to = fmtT(R.to), fr = fmtT(R.from), n = to.length, sp = S.spacing / 100 * fs, i, dist = R.dist, dir = R.dir;
           while (fr.length < n) fr = ' ' + fr; if (fr.length > n) fr = fr.slice(fr.length - n);
-          for (i = 0; i < n; i++){ var w = ctx.measureText(to[i]).width; ws.push(w); tot += w; }
-          tot += sp * (n - 1);
-          var colon = to.indexOf(':'), x = -tot / 2, pitch = fs * .8, dist = R.dist, dir = R.dir;
-          function ch(c, cx, y){
-            var ay = Math.abs(y) / fs, a = ay <= .12 ? 1 : ay >= .58 ? 0 : 1 - (function(v){ return v * v * (3 - 2 * v); })((ay - .12) / .46);
-            if (a <= 0) return;
-            ctx.textAlign = 'center';
-            if (S.cstyle === 'glass'){
-              ctx.globalAlpha = op * .6 * a; ctx.fillStyle = S.color; ctx.fillText(c, cx, y);
-              ctx.globalAlpha = op * .55 * a; ctx.strokeStyle = '#fff'; ctx.lineWidth = Math.max(1, fs * .012); ctx.shadowColor = 'transparent'; ctx.strokeText(c, cx, y);
-              if (S.shadow) ctx.shadowColor = 'rgba(0,0,0,.38)';
-            } else { ctx.globalAlpha = op * a; ctx.fillStyle = fill; ctx.fillText(c, cx, y); }
-            ctx.textAlign = 'left';
-          }
-          var ranks = [], r = 0;
+          var colon = to.indexOf(':'), wmax = 0, d;
+          for (d = 0; d < 10; d++) wmax = Math.max(wmax, ctx.measureText(String(d)).width);
+          var mt = ctx.measureText('0'), asc = (mt.actualBoundingBoxAscent || fs * .37), desc = (mt.actualBoundingBoxDescent || fs * .37), pad = fs * .03;
+          var wt0 = -asc - pad, wh = asc + desc + pad * 2, pitch = wh + fs * .1, sl = [], r = 0, ranks = [];
           for (i = n - 1; i >= 0; i--) if (to[i] !== ':') ranks[i] = r++;
           for (i = 0; i < n; i++){
-            var cx = x + ws[i] / 2, a0 = fr[i], b0 = to[i];
-            if (b0 === ':' || a0 === b0 && dist < 10){ ch(b0, cx, 0); x += ws[i] + sp; continue; }
-            var da = /\d/.test(a0), db = /\d/.test(b0), steps, m, base, pos;
-            if (!da || !db){
-              /* un côté sans chiffre (ex. « 9 » → « 12 » en 12 h) : glissement simple */
-              var pp = clamp((R.t - .0) / .75, 0, 1); pp = 1 - Math.pow(1 - pp, 3);
-              ch(a0, cx, -dir * pp * pitch); ch(b0, cx, dir * (1 - pp) * pitch);
-              x += ws[i] + sp; continue;
+            var a0 = fr[i], b0 = to[i], wt = ctx.measureText(b0).width, o2 = {a: a0, b: b0, wt: wt, w: wt, steps: 0};
+            if (b0 !== ':' && /\d/.test(a0) && /\d/.test(b0)){
+              var after = i - colon, m = after === 1 ? 6 : (colon === 2 && i === 0 ? (S.h12 ? 2 : 3) : 10), A = +a0, B = +b0;
+              var st = dir > 0 ? ((B - A) % m + m) % m : ((A - B) % m + m) % m;
+              st += (after === 2 ? Math.min(2, Math.floor(dist / 25)) : after === 1 ? Math.min(1, Math.floor(dist / 150)) : 0) * m;
+              if (st > 0){
+                var end = .72 + .28 * (ranks[i] / Math.max(1, r - 1)), pr = clamp(R.t / end, 0, 1); pr = 1 - Math.pow(1 - pr, 4);
+                o2.steps = st; o2.m = m; o2.A = A; o2.pos = st - pr * st < .04 ? st : st * pr; o2.pr = pr;
+                o2.w = wmax + (wt - wmax) * Math.pow(pr, 6);      /* colonne réservée : elle ne se rétrécit qu'à l'arrivée */
+              }
+            } else if (b0 !== ':' && a0 !== b0 && (a0 === ' ' || b0 === ' ' || !/\d/.test(a0) || !/\d/.test(b0))){
+              var pp = clamp(R.t / .75, 0, 1); o2.slide = 1 - Math.pow(1 - pp, 3); o2.w = Math.max(wt, ctx.measureText(a0).width);
+              o2.w = o2.w + (wt - o2.w) * Math.pow(o2.slide, 6);
             }
-            var after = i - colon, isMinTens = after === 1, isMinUnit = after === 2;
-            m = isMinTens ? 6 : (colon === 2 && i === 0 ? (S.h12 ? 2 : 3) : 10);
-            var A = +a0, B = +b0;
-            steps = dir > 0 ? ((B - A) % m + m) % m : ((A - B) % m + m) % m;
-            var extra = isMinUnit ? Math.min(2, Math.floor(dist / 25)) : isMinTens ? Math.min(1, Math.floor(dist / 150)) : 0;
-            steps += extra * m;
-            if (steps === 0){ ch(b0, cx, 0); x += ws[i] + sp; continue; }
-            var end = .7 + .3 * (ranks[i] / Math.max(1, r - 1)), pr = clamp(R.t / end, 0, 1);
-            pr = 1 - Math.pow(1 - pr, 4);
-            pos = steps * pr;                       /* nombre de crans parcourus, fractionnaire */
-            var k0 = Math.floor(pos);
-            for (var k = k0 - 1; k <= k0 + 2; k++){
-              var idx = (((A + dir * k) % m) + m) % m;
-              ch(String(idx), cx, (k - pos) * pitch * dir);
-            }
-            x += ws[i] + sp;
+            sl.push(o2);
           }
-          ctx.globalAlpha = 1;
+          var tot = sp * (n - 1); sl.forEach(function(q){ tot += q.w; });
+          var x = -tot / 2;
+          ctx.textAlign = 'center';
+          function one(c, cx, y){
+            if (S.cstyle === 'glass'){
+              ctx.globalAlpha = op * .6; ctx.fillStyle = S.color; ctx.fillText(c, cx, y);
+              ctx.globalAlpha = op * .55; ctx.strokeStyle = '#fff'; ctx.lineWidth = Math.max(1, fs * .012); ctx.shadowColor = 'transparent'; ctx.strokeText(c, cx, y);
+              if (S.shadow) ctx.shadowColor = 'rgba(0,0,0,.38)';
+            } else { ctx.globalAlpha = op; ctx.fillStyle = fill; ctx.fillText(c, cx, y); }
+          }
+          for (i = 0; i < n; i++){
+            var q = sl[i], cx = x + q.w / 2;
+            if (q.steps || q.slide){
+              ctx.save(); ctx.beginPath(); ctx.rect(x - sp / 2, wt0, q.w + sp, wh); ctx.clip();
+              if (q.steps){
+                var k0 = Math.floor(q.pos);
+                for (var k = k0 - 1; k <= k0 + 2; k++) one(String((((q.A + dir * k) % q.m) + q.m) % q.m), cx, (k - q.pos) * pitch * dir);
+              } else { one(q.a, cx, -dir * q.slide * pitch); one(q.b, cx, dir * (1 - q.slide) * pitch); }
+              ctx.restore();
+            } else one(q.b, cx, 0);
+            x += q.w + sp;
+          }
+          ctx.textAlign = 'left'; ctx.globalAlpha = 1;
         }
         var fill = S.color;
         if (S.cstyle === 'gradient'){
@@ -2367,7 +2368,7 @@ html.tour.tour-abs #stage,html.tour.tour-abs #editor{position:absolute}
   }, 250);
 
   /* version et mode hors ligne */
-  var VERSION = '50', offlineReady = false;
+  var VERSION = '51', offlineReady = false;
   function buildNote(){ $('#buildNote').textContent = 'Version ' + VERSION + (offlineReady ? ' · prête hors ligne' : ''); }
   buildNote();
   try {
