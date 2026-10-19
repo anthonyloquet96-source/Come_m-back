@@ -67,11 +67,12 @@ label.l{font-size:14px;color:var(--mute)}
 .toast.on{opacity:1}
 .foot{text-align:center;padding:6px 0 2px}
 .linkbtn{appearance:none;background:none;border:0;color:var(--mute);font:14px -apple-system,system-ui,sans-serif;text-decoration:underline;padding:10px;cursor:pointer}
-.code{letter-spacing:.08em;text-transform:uppercase;font-family:ui-monospace,Menlo,monospace;text-align:center}
+.code{font-size:clamp(13px,4.3vw,17px);letter-spacing:.04em;padding-left:6px;padding-right:6px;text-transform:uppercase;font-family:ui-monospace,Menlo,monospace;text-align:center}
 #next{grid-column:1/-1}
 .tourbar{display:flex;flex-direction:column;gap:8px}
-.tourhead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font:600 12px/1.2 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--brass)}
-.tourhead .tourhint{font-weight:400;letter-spacing:0;text-transform:none;color:var(--mute);text-align:right}
+.tourhead{display:flex;flex-direction:column;align-items:flex-start;gap:2px;font:600 12px/1.2 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--brass)}
+.tourhead .tourhint{font-weight:400;letter-spacing:0;text-transform:none;color:var(--mute)}
+.tourhead #tourNo{overflow-wrap:anywhere}
 .tourchips{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 8px}
 .tourchips .chip{flex:none;max-width:70vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tourchips .chip b{color:var(--brass);font-weight:600;margin-right:6px}
@@ -525,6 +526,12 @@ label.l{font-size:14px;color:var(--mute)}
     if (c){ store(c); try { history.replaceState(null, '', location.pathname + location.search); } catch(e){} }
     secret = window.Relay ? load() : null;
     if (secret) start(); else show();
+    /* un lien de jumelage ouvert dans une page déjà ouverte (même onglet) : on le prend en compte */
+    window.addEventListener('hashchange', function(){
+      var h2 = (location.hash || '').replace(/^#/, ''); try { h2 = decodeURIComponent(h2); } catch(e){}
+      var c2 = window.Relay ? Relay.normalize(h2) : null;
+      if (c2){ try { history.replaceState(null, '', location.pathname + location.search); } catch(e){} pair(c2); }
+    });
     try { if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(function(){}); } catch(e){}
   })();
 })();
